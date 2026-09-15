@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+"""Small root-privileged launcher for ``core/scanner_cli.py``, authorised by polkit.
+
+This is the *only* program ``com.mensuramedia.lindrivespace.policy`` grants
+``com.mensuramedia.lindrivespace.scan`` for
+(``org.freedesktop.policykit.exec.path``), so it must stay tiny and auditable:
+it does no scanning itself, only validates its arguments and ``execv``s
+``python3 -I`` over ``scanner_cli.py`` with them.
+
+Because this runs as root under ``pkexec``:
+- it never reads user config or imports GTK;
+- it ignores inherited ``PYTHON*`` environment configuration by running the
+  scanner under ``-I`` (isolated mode: no ``PYTHONPATH``/``PYTHONHOME``, no
+  user site-packages, no ``.pth`` files);
+- it refuses a scan target that is not an absolute path;
+- it refuses any option it does not recognise, so an attacker who controls
+  the argument list (the polkit action still requires interactive auth, but
+  defence in depth costs nothing here) cannot smuggle arbitrary flags through
+  to a root process;
+- it uses ``os.execv`` (not ``subprocess``) so it never forks: the scanner
+  keeps this same PID, and a signal sent to this process (SIGINT/SIGTERM/
+  SIGSTOP/SIGCONT from ``services.privilege.PrivilegedScan``) reaches the
+  scanner directly.
+
+Locating ``scanner_cli.py`` (first match wins):
+1. ``$LINDRIVESPACE_SCANNER_CLI`` (tests only -- never used to satisfy
+   anything except an explicit override, so a stray env var from a
+   half-configured root shell cannot silently redirect what gets run).
+2. The checkout layout, relative to this file's real (dereferenced) location:
+   ``data/bin/lindrivespace-scan-helper`` -> ``../../src/lindrivespace/core/scanner_cli.py``.
+3. ``/usr/lib/python3/dist-packages/lindrivespace/core/scanner_cli.py`` (deb package).
+4. ``/usr/share/lindrivespace/scanner_cli.py`` (fallback data-file install).
+"""
+
+import os
+import sys
+
+# Options scanner_cli.py itself defines. Kept as a literal list (not imported
+# from scanner_cli, which would drag a third-party-free but still non-trivial
+# module into a root-privileged process before its own argument validation
+# has even run) -- update this list if scanner_cli.py's CLI surface changes.
+_ALLOWED_FLAGS = {
+    "--json",
+    "--cross-mounts",
+    "--follow-symlinks",
+    "--no-hardlink-dedupe",
+    "--exclude",  # takes a value
+    "--top-files",  # takes a value
+}
+_FLAGS_WITH_VALUE = {"--exclude", "--top-files"}
+
+
+def _resolve_scanner_cli() -> str:
+    override = os.environ.get("LINDRIVESPACE_SCANNER_CLI")
+    if override:
+        return override
+
+    here = os.path.dirname(os.path.realpath(__file__))
+    checkout = os.path.normpath(
+        os.path.join(here, "..", "..", "src", "lindrivespace", "core", "scanner_cli.py")
+    )
+    if os.path.isfile(checkout):
+        return checkout
+
+    dist_packages = "/usr/lib/python3/dist-packages/lindrivespace/core/scanner_cli.py"
+    if os.path.isfile(dist_packages):
+        return dist_packages
+
+    return "/usr/share/lindrivespace/scanner_cli.py"
+
+
+def _fail(message: str) -> None:
+    print(f"lindrivespace-scan-helper: {message}", file=sys.stderr)
+    sys.exit(2)
+
+
+def main() -> None:
+    args = sys.argv[1:]
+    if len(args) < 1:
+        _fail("usage: lindrivespace-scan-helper [OPTIONS] PATH")
+
+    target = args[-1]
+    options = args[:-1]
+
+    i = 0
+    while i < len(options):
+        opt = options[i]
+        if not opt.startswith("-"):
+            _fail(f"unexpected positional argument: {opt}")
+        if opt not in _ALLOWED_FLAGS:
+            _fail(f"unknown option: {opt}")
+        if opt in _FLAGS_WITH_VALUE:
+            i += 1
+            if i >= len(options):
+                _fail(f"{opt} requires an argument")
+        i += 1
+
+    if not target or target.startswith("-"):
+        _fail("missing scan target path")
+    if not os.path.isabs(target):
+        _fail(f"refusing relative path: {target}")
+
+    scanner_cli = _resolve_scanner_cli()
+    python = sys.executable or "python3"
+    argv = [python, "-I", scanner_cli, *options, target]
+    try:
+        os.execv(python, argv)
+    except OSError as exc:
+        _fail(f"failed to exec scanner: {exc}")
+
+
+if __name__ == "__main__":
+    main()

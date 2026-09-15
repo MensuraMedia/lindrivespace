@@ -3,9 +3,11 @@
 
 ## Session Logs
 <!-- Add newest first -->
+- [2026-09-14 session 01](sessions/2026-09-14-session-01.md) — creation, plan, WP0–WP6, Group B launched
 
 ## Changes
 <!-- Add newest first -->
+- [WP11 privilege](changes/2026-09-14-wp11-privilege.md) — pkexec helper, event codec
 - [WP6 tree model + controller](changes/2026-09-14-wp6-tree-model-controller.md) — lazy TreeStore, draw-time formatting, drain
 - [WP4 geometry/data](changes/2026-09-14-wp4-geometry-data.md) — treemap, classify, snapshot
 - [WP5 widgets](changes/2026-09-14-wp5-widgets.md) — bar renderer, ring, mount card, KPI tile
