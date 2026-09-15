@@ -63,6 +63,12 @@ Ubuntu's typeface and colour language.
 ### Favorites
 - Star folders or files from the Explorer (toolbar star, Ctrl+D or the context menu); the Favorites page lists them and opens each one's space view in a click. A file favourite opens its folder with the file selected.
 
+### Hardware
+- What the kernel knows about the machine, no root required: system and chassis type, motherboard and firmware, CPU and memory, storage controllers, supported drive types, a disks table (link speed, block sizes, scheduler, TRIM, write cache) and live I/O rates.
+
+### Glossary
+- 120 short entries on Linux drives and space: disks and partitions, filesystems (what "ext" is, ext2/3/4, XFS, Btrfs, ZFS, vfat, squashfs, tmpfs, overlayfs), mounting, sizes and allocation, directories versus folders, storage subsystems and best practices, with search and category filters.
+
 ### Settings
 - Theme: Gray-Temperature Dark (default); Light and System-follow planned for v1.1.
 - Units: decimal GB (default) or binary GiB.
