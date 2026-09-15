@@ -7,6 +7,8 @@
 
 ## Changes
 <!-- Add newest first -->
+- [WP10 actions/snapshots](changes/2026-09-14-wp10-actions-snapshots.md) — export, actions, Snapshots page
+- [WP7 overview](changes/2026-09-14-wp7-overview.md) — mounts service, Overview page
 - [WP8 explorer](changes/2026-09-14-wp8-explorer.md) — tree-table page, columns, toolbar, breadcrumb, menu
 - [WP11 privilege](changes/2026-09-14-wp11-privilege.md) — pkexec helper, event codec
 - [WP6 tree model + controller](changes/2026-09-14-wp6-tree-model-controller.md) — lazy TreeStore, draw-time formatting, drain
