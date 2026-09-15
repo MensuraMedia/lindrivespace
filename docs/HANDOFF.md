@@ -1,4 +1,4 @@
-# LinDriveSpace — Handoff (2026-09-15)
+# LinDriveSpace — Handoff (2026-09-15, updated 17:50)
 
 This document is the single place to start from when picking the project up. It says what exists,
 how it is built and verified, what was decided and why, and what is still open.
@@ -12,12 +12,15 @@ for Linux. It was built on an optimized fork of `mikesdatawork/gtk-python-dashbo
 the `MensuraMedia/universal-instruction-set` (v2026.04) process, and uses the Ubuntu type family
 with Ubuntu orange on the "gray-temperature" palette.
 
-- Repo: https://github.com/MensuraMedia/lindrivespace (branch `main`, 27 commits, all pushed)
+- Repo: https://github.com/MensuraMedia/lindrivespace (branch `main`, 41 commits, all pushed)
 - Local checkout: `/home/user/projects/lindrivespace`
 - Concept & technical design: `docs/CONCEPT-AND-TECHNICAL-DESIGN.md` (§16 lists the errata adopted at build)
 - Screen mockups: `docs/mockups/lindrivespace-mockups.html` (published https://claude.ai/artifact/NJkL7nHfQys3V6LeYoNGnv),
   scan-strip variants `docs/mockups/scan-strip-mockups.html` (https://claude.ai/artifact/Bgqf9jYMRiiUBK1Wn6fESY)
 - README: `README.md` (features, screens, architecture, install, roadmap)
+- Issues & resolutions: `docs/ISSUES-AND-RESOLUTIONS.md` (every problem met, root cause, fix, guard —
+  read before touching GTK rendering, threading or the scan pipeline)
+- Overview view mockups: `docs/mockups/overview-views-mockups.html` (https://claude.ai/artifact/4rPwMZfBBSPyupdxKK4UTF)
 - Governance: `.claude/` (rules, hooks, commands, agents, memory), `changelog.md` (append-only),
   `.claude/memory/decisions.md`, `.claude/memory/changes/*.md` (one manifest per work package),
   `.claude/memory/pending.md`
@@ -35,7 +38,7 @@ Sidebar: **Overview · Explorer · Favorites · History · Hardware · Glossary 
 | Analysis panel | done | Collapsible (toolbar toggle, F9, collapse button; auto-hide < 1100 px): Treemap (zoom), Top files, Types, Age. |
 | Favorites | done | Store in settings; page lists folders/files; click scans that item; file favourites reveal in their folder. |
 | History | done | `core/history.py` HistoryStore (usage + scan samples, `~/.cache/lindrivespace/history.json`), TrendChart with Day/Week/Month/Year/All, First/Latest/Change/Growth tiles, Pattern History bookmarks. Clicking **Change** reveals "Where space changed": folder + file diff (`core/changes.py`) between the newest auto-saved scan snapshot and the oldest inside the period (`~/.cache/lindrivespace/scans/`, 12 kept per root, saved on a worker thread by `app.autosave_snapshot`). Background collector `lindrivespace --collect` + systemd user timer from Settings › Background collection (`services/scheduler.py`). |
-| Hardware | done | Unprivileged: system, DMI board/firmware, CPU/memory, lspci controllers, disks (link, block sizes, scheduler, TRIM, write cache), live I/O rates, filesystems. |
+| Hardware | done | Disks and live I/O tables first (styled like the Overview list, sortable), then system, DMI board/firmware, CPU/memory, lspci controllers, drive types, filesystems, notes; every card has a Copy icon; Refresh / Copy report. |
 | Glossary | done | 120 terms in 7 categories, search, category chips, expandable rows with See-also links. |
 | Settings | done | Theme (light = preview), units, primary size, scan defaults, exclusions, hidden fstypes, primary/secondary mountpoints, explorer bold-N / reset columns, auto-scan on startup, About with log path. |
 | Logging & errors | done | `lindrivespace/logsetup.py`: rotating log `~/.cache/lindrivespace/logs/lindrivespace.log` (1 MB × 5), main/thread/GTK-callback exception hooks, GLib warning capture, `--debug`; in-window error bar with Details and Open log. |
@@ -54,8 +57,8 @@ Sidebar: **Overview · Explorer · Favorites · History · Hardware · Glossary 
 # dev venv (ruff, mypy, pytest) — created once with: python3 -m venv --system-site-packages .venv && .venv/bin/pip install ruff mypy pytest
 .venv/bin/ruff check src tests && .venv/bin/ruff format --check src tests
 .venv/bin/mypy --strict src/lindrivespace/core
-.venv/bin/python -m pytest -q tests/core tests/services            # headless: 216 passed
-DISPLAY=:0 .venv/bin/python -m pytest -q tests/ui tests/models     # needs the X display: 105 passed
+.venv/bin/python -m pytest -q tests/core tests/services            # headless: 251 passed
+DISPLAY=:0 .venv/bin/python -m pytest -q tests/ui tests/models     # needs the X display: 118 passed
 ```
 GTK3 has no offscreen backend: UI tests need `DISPLAY=:0` (or `broadwayd`). `tests/ui/conftest.py`
 holds one session-scoped application window; UI test modules must not build their own
@@ -96,6 +99,11 @@ GtkTreeStore); everything displayed is formatted at draw time.
 - Errata adopted at build start: pre-order scan events, timeout drain, model-owned sort, pkexec helper process, gzip snapshots, no offscreen backend, venv tooling, no NavigationManager, NON_UNIQUE for smoke/screenshot.
 - Scan strip: variant B chosen by the user; no "entries" wording; square chips; bold green when done.
 - Startup auto-scan of all physical mounts, results retained per mount in the registry.
+- Overview is a list (user's pick), no Cards or Map view; columns reorderable/hideable like the Explorer.
+- Page gutters are CSS padding, never widget margins; no GdkWindow background hacks (docs/ISSUES-AND-RESOLUTIONS.md §1).
+- Every finished scan is auto-saved as a snapshot (12 per root) so History can show *where* space changed.
+- Menu check/radio items, switches, radios and checks are accent orange when on, grey when off (theme bitmaps overridden).
+- An adversarial-reviewer agent (Opus, read-only) red-teams designs and diffs and collaborates with other agents.
 
 ## 6. Known issues and open items (also in `.claude/memory/pending.md`)
 
@@ -107,11 +115,13 @@ GtkTreeStore); everything displayed is formatted at draw time.
 6. Bind mounts of the same device are listed but not scanned separately; btrfs/zfs allocated ≠ fs usage (documented in the glossary).
 7. Page gutters: every `BasePage` paints its own 24 px gutter as CSS padding (`.page.page-padded`); never reintroduce widget margins on pages or GdkWindow background hacks (both produced black bands on resize).
 8. "Where space changed" needs two kept snapshots of a mount; file rows come from each folder's 50 largest files, so smaller files are attributed to their folder only.
+10. The UI test fixture does not isolate `Settings()`/XDG dirs; tests must point stores at `tmp_path` (ISSUES §3.2). A per-session XDG override in `tests/ui/conftest.py` would close this.
 9. Agents: `.claude/agents/adversarial-reviewer.md` (Opus, read-only) red-teams designs and diffs and collaborates with implementer/code-reviewer agents via SendMessage; see `.claude/routing-rules.md`.
 
 ## 7. Process for continuing
 
-- Work is organised in work packages (WP0–WP16 so far). Each has a manifest in `.claude/memory/changes/`.
+- Work is organised in work packages (WP0–WP17 so far, plus dated manifests for smaller user requests). Each has a manifest in `.claude/memory/changes/`.
+- For non-trivial packages run the `adversarial-reviewer` agent on the design before building and on the diff before committing (`.claude/routing-rules.md`).
 - Shared files (`ui/window.py`, `ui/pages/__init__.py`, `app.py`, `config/*`, `data/css/app.css`) are edited by the orchestrator only; agents own their package's files.
 - Every change is appended to `changelog.md` with a timestamp; decisions go to `decisions.md`.
 - Commits are made per work package with the session attribution trailer; `main` is pushed after each.
@@ -121,3 +131,5 @@ GtkTreeStore); everything displayed is formatted at draw time.
 
 A local tarball is written by `scripts/backup.sh` to `~/backups/lindrivespace-<timestamp>.tar.gz`
 (excludes `.venv`, caches and git objects are included so the history travels with it).
+Backups taken: `lindrivespace-20260915-064256.tar.gz` and the one written at the end of this session
+(see the `.sha256` beside each). Restore: `tar -xzf ~/backups/lindrivespace-<stamp>.tar.gz -C ~/projects`.

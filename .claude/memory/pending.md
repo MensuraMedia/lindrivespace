@@ -10,3 +10,7 @@
 - [ ] Add a LICENSE file (user decision).
 - [x] WP14 Favorites + Explorer star wiring — done 2026-09-15.
 - [x] Columns button + context item — done 2026-09-15.
+- [x] WP15 Glossary, WP16 Hardware, WP17 History (+ change drill-down), scheduler/collector — done 2026-09-15.
+- [x] Black page gutters, no-show-all show_all bug, blue menu check glyphs — fixed 2026-09-15 (docs/ISSUES-AND-RESOLUTIONS.md).
+- [ ] Isolate Settings/XDG dirs in the UI test fixture (ISSUES §3.2).
+- [ ] Optional: History page shortcut to Settings › Background collection.
