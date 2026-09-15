@@ -451,3 +451,108 @@ spinner {
   border-color: @accent;
   color: @accent;
 }
+
+/* ---- switches, radios, checks in the accent colour -------------------------- */
+switch {
+  background-color: @bg_sunken;
+  background-image: none;
+  border: 1px solid @line;
+  border-radius: 14px;
+  color: @fg_muted;
+  min-height: 22px;
+  min-width: 44px;
+}
+switch:checked {
+  background-color: @accent;
+  background-image: none;
+  border-color: @accent;
+  color: #ffffff;
+}
+switch slider {
+  background-color: @fg_muted;
+  background-image: none;
+  border: 1px solid @line;
+  border-radius: 50%;
+  box-shadow: none;
+  min-height: 18px;
+  min-width: 18px;
+}
+switch:checked slider {
+  background-color: #ffffff;
+  border-color: @accent_hot;
+}
+switch:disabled,
+switch:disabled slider {
+  opacity: 0.5;
+}
+radio,
+check {
+  background-color: @bg_sunken;
+  background-image: none;
+  border: 1px solid @line_soft;
+  color: #ffffff;
+  min-height: 14px;
+  min-width: 14px;
+}
+radio {
+  border-radius: 50%;
+}
+check {
+  border-radius: 3px;
+}
+radio:checked,
+check:checked {
+  background-color: @accent;
+  background-image: none;
+  border-color: @accent;
+  color: #ffffff;
+}
+radio:hover,
+check:hover {
+  border-color: @accent_hot;
+}
+radio:disabled,
+check:disabled {
+  opacity: 0.5;
+}
+/* Mint-Y selects "radiobutton radio" / "checkbutton check"; match that specificity. */
+radiobutton radio,
+checkbutton check,
+treeview.view radio,
+treeview.view check {
+  background-color: @bg_sunken;
+  background-image: none;
+  border: 1px solid @line_soft;
+  color: #ffffff;
+  -gtk-icon-shadow: none;
+}
+radiobutton radio:checked,
+checkbutton check:checked,
+radiobutton radio:active,
+checkbutton check:active,
+treeview.view radio:checked,
+treeview.view check:checked {
+  background-color: @accent;
+  background-image: none;
+  border-color: @accent;
+  color: #ffffff;
+}
+radiobutton radio:checked:hover,
+checkbutton check:checked:hover {
+  background-color: @accent_hot;
+  border-color: @accent_hot;
+}
+/* Mint-Y's checked radio/check glyphs are blue bitmaps: replace them. */
+radiobutton radio:checked,
+radiobutton radio:active,
+treeview.view radio:checked {
+  -gtk-icon-source: none;
+  background-image: radial-gradient(circle closest-side, #ffffff 38%, transparent 42%);
+}
+checkbutton check:checked,
+checkbutton check:active,
+treeview.view check:checked {
+  -gtk-icon-source: -gtk-icontheme("object-select-symbolic");
+  -gtk-icon-transform: scale(0.8);
+  color: #ffffff;
+}
