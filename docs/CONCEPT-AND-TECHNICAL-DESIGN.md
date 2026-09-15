@@ -486,3 +486,4 @@ Findings from the pre-build review, recorded in `.claude/memory/decisions.md`; t
 | 11 | `GDK_BACKEND=offscreen` | GTK3 has no offscreen backend: UI tests run on `DISPLAY=:0` (or `broadwayd`) with `Gtk.OffscreenWindow`; skipped when `Gtk.init_check()` fails |
 | 11 | `ruff` / `mypy` via apt | `.venv` (`--system-site-packages`) with `ruff`, `mypy`, `pytest`; `run.sh` stays on system Python |
 | 6 | Starter `NavigationManager` | Dropped; the window handles the sidebar's `page-changed`. `Gtk.Application` runs `NON_UNIQUE` for `--smoke` / `--screenshot` |
+| 8 | Merge mounts by `maj:min` | Bind mounts share `maj:min` with their source, so `core/mounts.py` merges on `(maj:min, mountpoint)` first, then mountpoint, then `maj:min`; LVM/LUKS `/dev/mapper/*` aliases resolve to the real `dm-N` kname (WP3 finding) |

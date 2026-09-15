@@ -1,0 +1,13 @@
+28 34 0:25 / /sys rw,nosuid,nodev,noexec,relatime shared:7 - sysfs sysfs rw
+29 34 0:26 / /proc rw,nosuid,nodev,noexec,relatime shared:13 - proc proc rw
+32 34 0:28 / /run rw,nosuid,nodev,noexec,relatime shared:5 - tmpfs tmpfs rw,size=1319324k,mode=755,inode64
+34 2 259:2 / / rw,relatime shared:1 - ext4 /dev/nvme0n1p2 rw,errors=remount-ro
+52 34 7:0 / /snap/core22/2411 ro,nodev,relatime shared:46 - squashfs /dev/loop0 ro,errors=continue,threads=single
+56 34 7:2 / /snap/core24/1587 ro,nodev,relatime shared:50 - squashfs /dev/loop2 ro,errors=continue,threads=single
+96 34 259:3 / /home rw,relatime shared:66 - ext4 /dev/nvme0n1p3 rw
+98 34 8:1 / /mnt/data rw,relatime shared:68 - ext4 /dev/sda1 rw
+100 34 259:1 / /boot/efi rw,relatime shared:70 - vfat /dev/nvme0n1p1 rw,fmask=0077,dmask=0077,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
+150 34 8:17 / /media/user/USBSTICK rw,nosuid,nodev,relatime,uid=1000,gid=1000 shared:120 - vfat /dev/sdb1 rw,fmask=0022,dmask=0022,codepage=437,iocharset=utf8,shortname=mixed,errors=remount-ro
+160 34 253:1 / /mnt/vault rw,relatime shared:130 - ext4 /dev/mapper/vgdata-lvroot rw
+170 34 8:49 / /mnt/My\040Backup rw,relatime shared:140 - ext4 /dev/sdd1 rw
+180 34 259:3 /home /mnt/homebind rw,relatime shared:150 - ext4 /dev/nvme0n1p3 rw

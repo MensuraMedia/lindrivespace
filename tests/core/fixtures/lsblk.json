@@ -1,0 +1,258 @@
+{
+  "blockdevices": [
+    {
+      "name": "loop0",
+      "kname": "loop0",
+      "pkname": null,
+      "size": 77574144,
+      "type": "loop",
+      "fstype": "squashfs",
+      "label": null,
+      "uuid": null,
+      "mountpoint": "/snap/core22/2411",
+      "model": null,
+      "rota": false,
+      "tran": null,
+      "maj:min": "7:0"
+    },
+    {
+      "name": "loop2",
+      "kname": "loop2",
+      "pkname": null,
+      "size": 70094848,
+      "type": "loop",
+      "fstype": "squashfs",
+      "label": null,
+      "uuid": null,
+      "mountpoint": "/snap/core24/1587",
+      "model": null,
+      "rota": false,
+      "tran": null,
+      "maj:min": "7:2"
+    },
+    {
+      "name": "sda",
+      "kname": "sda",
+      "pkname": null,
+      "size": 1000204886016,
+      "type": "disk",
+      "fstype": null,
+      "label": null,
+      "uuid": null,
+      "mountpoint": null,
+      "model": "Samsung SSD 870 EVO 1TB",
+      "rota": false,
+      "tran": "sata",
+      "maj:min": "8:0",
+      "children": [
+        {
+          "name": "sda1",
+          "kname": "sda1",
+          "pkname": "sda",
+          "size": 1000203820544,
+          "type": "part",
+          "fstype": "ext4",
+          "label": null,
+          "uuid": "9448015c-6d32-4f2b-9082-415ca20f01d9",
+          "mountpoint": "/mnt/data",
+          "model": null,
+          "rota": false,
+          "tran": null,
+          "maj:min": "8:1"
+        }
+      ]
+    },
+    {
+      "name": "nvme0n1",
+      "kname": "nvme0n1",
+      "pkname": null,
+      "size": 2000398934016,
+      "type": "disk",
+      "fstype": null,
+      "label": null,
+      "uuid": null,
+      "mountpoint": null,
+      "model": "WD_BLACK SN770 2TB",
+      "rota": false,
+      "tran": "nvme",
+      "maj:min": "259:0",
+      "children": [
+        {
+          "name": "nvme0n1p1",
+          "kname": "nvme0n1p1",
+          "pkname": "nvme0n1",
+          "size": 536870912,
+          "type": "part",
+          "fstype": "vfat",
+          "label": null,
+          "uuid": "2F4B-4A5C",
+          "mountpoint": "/boot/efi",
+          "model": null,
+          "rota": false,
+          "tran": "nvme",
+          "maj:min": "259:1"
+        },
+        {
+          "name": "nvme0n1p2",
+          "kname": "nvme0n1p2",
+          "pkname": "nvme0n1",
+          "size": 107374000128,
+          "type": "part",
+          "fstype": "ext4",
+          "label": null,
+          "uuid": "3eeb638a-6d84-4cec-a390-72747141ffff",
+          "mountpoint": "/",
+          "model": null,
+          "rota": false,
+          "tran": "nvme",
+          "maj:min": "259:2"
+        },
+        {
+          "name": "nvme0n1p3",
+          "kname": "nvme0n1p3",
+          "pkname": "nvme0n1",
+          "size": 1892486815232,
+          "type": "part",
+          "fstype": "ext4",
+          "label": null,
+          "uuid": "1a2df9b1-a3ee-4ead-a830-2422e4ff0151",
+          "mountpoint": "/home",
+          "model": null,
+          "rota": false,
+          "tran": "nvme",
+          "maj:min": "259:3"
+        }
+      ]
+    },
+    {
+      "name": "sdb",
+      "kname": "sdb",
+      "pkname": null,
+      "size": 32017047552,
+      "type": "disk",
+      "fstype": null,
+      "label": null,
+      "uuid": null,
+      "mountpoint": null,
+      "model": "Kingston DataTraveler 3.0",
+      "rota": false,
+      "tran": "usb",
+      "maj:min": "8:16",
+      "children": [
+        {
+          "name": "sdb1",
+          "kname": "sdb1",
+          "pkname": "sdb",
+          "size": 32014843904,
+          "type": "part",
+          "fstype": "vfat",
+          "label": "USBSTICK",
+          "uuid": "1234-5678",
+          "mountpoint": "/media/user/USBSTICK",
+          "model": null,
+          "rota": false,
+          "tran": "usb",
+          "maj:min": "8:17"
+        }
+      ]
+    },
+    {
+      "name": "sdc",
+      "kname": "sdc",
+      "pkname": null,
+      "size": 1000204886016,
+      "type": "disk",
+      "fstype": null,
+      "label": null,
+      "uuid": null,
+      "mountpoint": null,
+      "model": "Crucial MX500 1TB",
+      "rota": false,
+      "tran": "sata",
+      "maj:min": "8:32",
+      "children": [
+        {
+          "name": "sdc1",
+          "kname": "sdc1",
+          "pkname": "sdc",
+          "size": 1000202813440,
+          "type": "part",
+          "fstype": "crypto_LUKS",
+          "label": null,
+          "uuid": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+          "mountpoint": null,
+          "model": null,
+          "rota": false,
+          "tran": null,
+          "maj:min": "8:33",
+          "children": [
+            {
+              "name": "luks-vault",
+              "kname": "dm-0",
+              "pkname": "sdc1",
+              "size": 1000200716288,
+              "type": "crypt",
+              "fstype": "LVM2_member",
+              "label": null,
+              "uuid": "ffffffff-0000-1111-2222-333333333333",
+              "mountpoint": null,
+              "model": null,
+              "rota": false,
+              "tran": null,
+              "maj:min": "253:0",
+              "children": [
+                {
+                  "name": "vgdata-lvroot",
+                  "kname": "dm-1",
+                  "pkname": "dm-0",
+                  "size": 1000196521984,
+                  "type": "lvm",
+                  "fstype": "ext4",
+                  "label": null,
+                  "uuid": "12345678-90ab-cdef-1234-567890abcdef",
+                  "mountpoint": "/mnt/vault",
+                  "model": null,
+                  "rota": false,
+                  "tran": null,
+                  "maj:min": "253:1"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sdd",
+      "kname": "sdd",
+      "pkname": null,
+      "size": 4000787030016,
+      "type": "disk",
+      "fstype": null,
+      "label": null,
+      "uuid": null,
+      "mountpoint": null,
+      "model": "WDC WD40EFRX-68N32N0",
+      "rota": true,
+      "tran": "sata",
+      "maj:min": "8:48",
+      "children": [
+        {
+          "name": "sdd1",
+          "kname": "sdd1",
+          "pkname": "sdd",
+          "size": 4000784908288,
+          "type": "part",
+          "fstype": "ext4",
+          "label": null,
+          "uuid": "dddddddd-1111-2222-3333-444444444444",
+          "mountpoint": "/mnt/My Backup",
+          "model": null,
+          "rota": true,
+          "tran": "sata",
+          "maj:min": "8:49"
+        }
+      ]
+    }
+  ]
+}
