@@ -14,6 +14,9 @@ Orchestrate a complex task across multiple agents using intensity-based routing.
    - Identify implementation tasks (implementer — Sonnet)
    - Identify review tasks (code-reviewer — Sonnet)
    - Identify architecture/design tasks (architect — Opus)
+   - Identify red-team tasks (adversarial-reviewer — Opus): scrutinize the design/method
+     before building and the diff before committing; it collaborates with the
+     implementer and code-reviewer via SendMessage
 
 2. **Score each sub-task's intensity** using `.claude/routing-rules.md`
 

@@ -11,7 +11,7 @@ Before delegating to a sub-agent, evaluate the task's complexity on a 1-10 scale
 |-----------|-----------|-------------|---------|
 | 1-3 (Low) | Haiku (`claude-haiku-4-5-20251001`) | scout, data-checker | File lookups, grep searches, config validation, simple questions |
 | 4-7 (Medium) | Sonnet (`claude-sonnet-4-6`) | implementer, code-reviewer, specialists | Feature implementation, bug fixes, code review, refactoring |
-| 8-10 (High) | Opus (`claude-opus-4-6`) | architect | System design, complex multi-file refactors, major decisions, cross-cutting changes |
+| 8-10 (High) | Opus (`claude-opus-4-6`) | architect, adversarial-reviewer | System design, complex multi-file refactors, major decisions, cross-cutting changes; red-teaming a design or method before/after it is built |
 
 ## Routing Decision Process
 
@@ -35,3 +35,13 @@ Before delegating to a sub-agent, evaluate the task's complexity on a 1-10 scale
 
 - `/route` — Evaluate a task and suggest the right agent + model
 - `/team` — Launch a coordinated multi-agent workflow
+
+## Adversarial Review (project addition)
+
+`adversarial-reviewer` (Opus, read-only) tries to break a design, algorithm, UI approach or
+work package and proposes fixes. Run it (a) on a design section or WP brief before
+implementation starts and (b) on the WP's diff before the orchestrator commits. It
+collaborates with the live implementer/code-reviewer agents over `SendMessage`
+(one consolidated risk list per round; replies "fixed / disputed / needs-decision" per item)
+and reports the closed/remaining/accepted risks to the orchestrator, who records accepted
+trade-offs in `.claude/memory/decisions.md`. It never edits files.

@@ -59,7 +59,13 @@ Ubuntu's typeface and colour language.
 ### Actions and export
 - Open in file manager, open terminal here, copy path, move to trash (with confirmation).
 - Export the tree as CSV or JSON; export the treemap as PNG.
-- Snapshots: save a scan and diff it against a later one (grew / shrank / new / deleted).
+- Every finished scan is kept as a compact snapshot (newest 12 per mount) so History can show where space changed.
+
+### History
+- Disk usage is recorded automatically (every refresh, every finished scan, and by the optional background collector) and charted per mount for a Day, Week, Month, Year or All.
+- First / Latest / Change / Growth-per-day tiles; click **Change** to see *where* it happened: a sortable table of folders and files (grew / shrank / new / deleted, before, after, difference) diffed between the newest scan and the oldest one in the period. Double-click a row to open it in the Explorer.
+- Pattern History keeps named bookmarks of a mount + period view.
+- Background collection: Settings › Background collection enables a systemd user timer that runs `lindrivespace --collect` (usage only, or with a full scan) hourly, every 6 h, daily or weekly, even when the app is closed.
 
 ### Favorites
 - Star folders or files from the Explorer (toolbar star, Ctrl+D or the context menu); the Favorites page lists them and opens each one's space view in a click. A file favourite opens its folder with the file selected.
@@ -141,7 +147,7 @@ src/lindrivespace/
 │   └── scanner_cli.py  stdlib-only NDJSON scanner used by the pkexec helper
 ├── models/           Gtk.TreeStore adapter (lazy children, model-owned sort) · mounts list store
 ├── services/         scan controller (thread → queue → GLib drain), actions, export, privilege
-└── ui/               window, sidebar, pages (overview, explorer, snapshots, settings), widgets
+└── ui/               window, sidebar, pages (overview, explorer, favorites, snapshots=History, hardware, glossary, settings), widgets
 ```
 
 - **Core purity.** `core/` imports nothing from GTK. It is unit-tested headless, runs as the root helper,
@@ -203,7 +209,7 @@ architectural decisions live in `.claude/memory/decisions.md`.
 | M2 | Mount discovery + Overview page | planned |
 | M3 | Explorer tree-table, progressive fill, sort, context menu | planned |
 | M4 | Insight panel: treemap, top files, types, age | planned |
-| M5 | Actions, export, snapshots + diff | planned |
+| M5 | Actions, export, history + change drill-down | done |
 | M6 | Scan as administrator, settings, light tokens, a11y pass | planned |
 | M7 | `.deb` package, desktop entry, AppStream, v1.0.0 | planned |
 

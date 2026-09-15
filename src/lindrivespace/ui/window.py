@@ -49,11 +49,6 @@ class MainWindow(Gtk.ApplicationWindow):
         self._build_body()
         self.show_page(DEFAULT_PAGE)
         self.connect("delete-event", self._on_delete)
-        # While the window is being resized the server may expose regions before GTK
-        # repaints them; give every GdkWindow in the content our surface colour so
-        # they never flash black.
-        self.connect("realize", self._on_realize_backgrounds)
-        self.connect("size-allocate", self._on_size_allocate_backgrounds)
 
     # ---- header -----------------------------------------------------------
 
@@ -136,7 +131,11 @@ class MainWindow(Gtk.ApplicationWindow):
         if spec.scrolled:
             scrolled = Gtk.ScrolledWindow()
             scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+            scrolled.get_style_context().add_class("content-scroller")
             scrolled.add(page)
+            viewport = scrolled.get_child()
+            if isinstance(viewport, Gtk.Viewport):
+                viewport.set_shadow_type(Gtk.ShadowType.NONE)
             child = scrolled
         self.stack.add_named(child, spec.id)
 
@@ -252,42 +251,6 @@ class MainWindow(Gtk.ApplicationWindow):
         refresh = getattr(overview, "refresh_scan_history", None)
         if callable(refresh):
             refresh()
-
-    # ---- background safety on resize ----------------------------------------
-
-    def _surface_rgba(self) -> Gdk.RGBA:
-        r, g, b, a = self.app.theme.rgba("bg_surface_2", 1.0)
-        return Gdk.RGBA(red=r, green=g, blue=b, alpha=a)
-
-    def _paint_gdk_windows(self, widget: Gtk.Widget, rgba: Gdk.RGBA) -> None:
-        gdk_window = widget.get_window()
-        if gdk_window is not None and widget.get_has_window():
-            try:
-                gdk_window.set_background_rgba(rgba)
-            except Exception:  # noqa: BLE001 - deprecated API; best effort
-                pass
-        if isinstance(widget, Gtk.Container):
-            for child in widget.get_children():
-                self._paint_gdk_windows(child, rgba)
-
-    def _on_realize_backgrounds(self, _widget: Gtk.Widget) -> None:
-        GLib.idle_add(self._apply_backgrounds)
-
-    def _on_size_allocate_backgrounds(self, _widget: Gtk.Widget, _alloc: Gdk.Rectangle) -> None:
-        if not getattr(self, "_bg_applied", False):
-            self._apply_backgrounds()
-
-    def _apply_backgrounds(self) -> bool:
-        rgba = self._surface_rgba()
-        gdk_window = self.get_window()
-        if gdk_window is not None:
-            try:
-                gdk_window.set_background_rgba(rgba)
-            except Exception:  # noqa: BLE001
-                pass
-        self._paint_gdk_windows(self.stack, rgba)
-        self._bg_applied = True
-        return False
 
     # ---- persistence ------------------------------------------------------
 

@@ -24,17 +24,17 @@ with Ubuntu orange on the "gray-temperature" palette.
 
 ## 2. Current state: what works
 
-Sidebar: **Overview · Explorer · Favorites · Snapshots · Hardware · Glossary · Settings** (bottom).
+Sidebar: **Overview · Explorer · Favorites · History · Hardware · Glossary · Settings** (bottom).
 
 | Area | Status | Notes |
 |---|---|---|
 | Startup auto-scan | done | 1.5 s after launch every physical mount is queued (primary, secondary, `/`, rest). `services/scan_registry.py` keeps one model per root; one scanner thread at a time. Switch off in Settings › Scanning. |
 | Scan strip | done | Variant B stats panel at the top of the content area on every page: percent, bar (scanned ÷ mount used bytes), scanned/of/rate/elapsed, square queue chips (done = bold green), countdown, Pause/Stop. `ui/widgets/scan_banner.py`. |
-| Overview | done | KPI tiles, mount cards grouped by disk with bar gauges, primary/secondary badges, show-hidden, udev hot-plug refresh, 30 s usage refresh. |
+| Overview | done | KPI tiles and a list view (`ui/widgets/mount_list.py`): disk section rows, one row per mount with inline Used % bar, PRIMARY/SECONDARY badge, star, Scan/Rescan; columns reorderable/hideable/resizable (persisted); udev hot-plug refresh, 30 s usage refresh. Cards view removed. |
 | Explorer | done | Tree-table with reorderable/resizable/sortable/hideable columns (header menu, toolbar Columns), live file rows on expand (2,000 cap + summary row), Share % bars, breadcrumb, status bar, context menu, Favorites star (toolbar, Ctrl+D, menu), double-click file → file manager. |
 | Analysis panel | done | Collapsible (toolbar toggle, F9, collapse button; auto-hide < 1100 px): Treemap (zoom), Top files, Types, Age. |
 | Favorites | done | Store in settings; page lists folders/files; click scans that item; file favourites reveal in their folder. |
-| Snapshots | done | Save/open/delete gzip snapshots, compare two with a coloured diff table. |
+| History | done | `core/history.py` HistoryStore (usage + scan samples, `~/.cache/lindrivespace/history.json`), TrendChart with Day/Week/Month/Year/All, First/Latest/Change/Growth tiles, Pattern History bookmarks. Clicking **Change** reveals "Where space changed": folder + file diff (`core/changes.py`) between the newest auto-saved scan snapshot and the oldest inside the period (`~/.cache/lindrivespace/scans/`, 12 kept per root, saved on a worker thread by `app.autosave_snapshot`). Background collector `lindrivespace --collect` + systemd user timer from Settings › Background collection (`services/scheduler.py`). |
 | Hardware | done | Unprivileged: system, DMI board/firmware, CPU/memory, lspci controllers, disks (link, block sizes, scheduler, TRIM, write cache), live I/O rates, filesystems. |
 | Glossary | done | 120 terms in 7 categories, search, category chips, expandable rows with See-also links. |
 | Settings | done | Theme (light = preview), units, primary size, scan defaults, exclusions, hidden fstypes, primary/secondary mountpoints, explorer bold-N / reset columns, auto-scan on startup, About with log path. |
@@ -105,7 +105,9 @@ GtkTreeStore); everything displayed is formatted at draw time.
 4. WP13 packaging (`debian/`, desktop entry, AppStream, README screenshots of the real app).
 5. Light theme is a preview (tokens only, contrast-audited).
 6. Bind mounts of the same device are listed but not scanned separately; btrfs/zfs allocated ≠ fs usage (documented in the glossary).
-7. Requested next (2026-09-15): Settings button alignment in the sidebar; visible cell borders on Hardware tables; per-card Copy on Hardware; star a mount card into Favorites; uniform mount-card sizes with hidden/virtual mounts grouped together; selectable Overview view types (mockups first).
+7. Page gutters: every `BasePage` paints its own 24 px gutter as CSS padding (`.page.page-padded`); never reintroduce widget margins on pages or GdkWindow background hacks (both produced black bands on resize).
+8. "Where space changed" needs two kept snapshots of a mount; file rows come from each folder's 50 largest files, so smaller files are attributed to their folder only.
+9. Agents: `.claude/agents/adversarial-reviewer.md` (Opus, read-only) red-teams designs and diffs and collaborates with implementer/code-reviewer agents via SendMessage; see `.claude/routing-rules.md`.
 
 ## 7. Process for continuing
 

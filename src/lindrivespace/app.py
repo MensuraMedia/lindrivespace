@@ -182,6 +182,50 @@ class LinDriveSpaceApp(Gtk.Application):
             if self.window.scan_history.get(path) != entry.finished_text:
                 self.window.record_scan(path, entry.finished_text)
                 self.record_scan_sample(path, entry.alloc, entry.entries)
+                self.autosave_snapshot(path, entry)
+
+    KEEP_SNAPSHOTS_PER_PATH = 12
+
+    def autosave_snapshot(self, path: str, entry: object) -> None:
+        """Keep a compact snapshot of every finished scan so History can show *where*
+        space changed (folder/file diffs between two points in time). Serialising a
+        large tree takes seconds, so it runs on a worker thread; the FsNode tree is
+        immutable once a scan has finished."""
+        model = getattr(entry, "model", None)
+        root = getattr(model, "root", None)
+        if root is None:
+            return
+        import threading
+
+        keep = self.KEEP_SNAPSHOTS_PER_PATH
+        log = self.log
+
+        def work() -> None:
+            try:
+                from lindrivespace.core.snapshot import (
+                    default_snapshot_dir,
+                    list_snapshots,
+                    save_snapshot,
+                    snapshot_filename,
+                )
+
+                directory = default_snapshot_dir()
+                directory.mkdir(parents=True, exist_ok=True)
+                save_snapshot(root, directory / snapshot_filename(path), {"auto": True})
+                mine = sorted(
+                    (m for m in list_snapshots(directory) if m.root_path == path),
+                    key=lambda m: m.saved_at,
+                )
+                for old in mine[:-keep]:
+                    try:
+                        Path(old.path).unlink()
+                    except OSError:
+                        pass
+                log.info("snapshot saved for %s (%d kept)", path, min(len(mine), keep))
+            except Exception as exc:  # noqa: BLE001 - bookkeeping must never break the app
+                log.warning("auto snapshot failed for %s: %s", path, exc)
+
+        threading.Thread(target=work, name=f"snapshot:{path}", daemon=True).start()
 
     def _auto_scan_tick(self) -> bool:
         """Wait (up to ~20 s) for the mount list, then queue every mount."""

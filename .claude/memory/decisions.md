@@ -42,3 +42,20 @@ Context: pre-build review of `docs/CONCEPT-AND-TECHNICAL-DESIGN.md` against the 
 - Foundation: `gtk-python-dashboard-starter` — keep `Sidebar` + `BasePage` + CssProvider pattern; replace `Gtk.Window`/`Gtk.main()` with `Gtk.Application`; one theme (gray-temperature) generated from a dataclass instead of seven hard-coded themes.
 - Visual system: Ubuntu / Ubuntu Mono; accent `#e95420`; surfaces `#495060 / #343946 / #2d323d / #21252f / #1b1e29`.
 - Governance: universal-instruction-set v2026.04 copied into `.claude/`; `memory-rules.md` name per the master CLAUDE.md step 2; example sector rules replaced by `python-gtk.md` and `core-purity.md`.
+
+## 2026-09-15 — Page gutters are CSS padding, not widget margins
+Widget margins belong to the parent's drawing; inside a ScrolledWindow/Viewport that band is
+never painted and shows the X window background (black) during resize. Every BasePage now
+carries its gutter as CSS padding (`.page.page-padded`). No GdkWindow background hacks.
+
+## 2026-09-15 — Scan snapshots are kept automatically for change drill-down
+Each finished scan is saved as `.json.gz` under `~/.cache/lindrivespace/scans/` (newest 12
+per root path, written on a worker thread). History's "Where space changed" compares the
+newest snapshot with the oldest one inside the chosen period. File-level rows come from each
+directory's recorded largest files (top_files, 50 per folder), so small files below that cut
+are attributed to their folder row only. Change threshold 1 MB, depth 6.
+
+## 2026-09-15 — Adversarial review is part of the workflow
+An Opus, read-only `adversarial-reviewer` agent red-teams designs/methods before a WP is built
+and diffs before they are committed, collaborating with the implementer/code-reviewer over
+SendMessage. Accepted trade-offs it reports are recorded here.

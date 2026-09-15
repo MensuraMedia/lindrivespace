@@ -34,10 +34,10 @@ class BasePage(Gtk.Box):
         self.theme = window.app.theme
         self.settings = window.app.settings
         self.get_style_context().add_class("page")
-        self.set_margin_start(margin)
-        self.set_margin_end(margin)
-        self.set_margin_top(margin)
-        self.set_margin_bottom(margin)
+        # Margins are CSS padding on the page itself (class page-padded), so the page
+        # paints its own gutter; widget margins would leave that band to the parent.
+        if margin > 0:
+            self.get_style_context().add_class("page-padded")
         self.build_content()
 
     # ---- hooks ------------------------------------------------------------

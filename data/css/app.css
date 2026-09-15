@@ -562,14 +562,20 @@ treeview.view.grid-table {
   background-color: @bg_surface;
 }
 
-/* ---- content background: the theme's viewport must not paint over the token -- */
+/* ---- content background ------------------------------------------------------
+   GTK3 paints backgrounds per CSS node. Every container between the window and a
+   page is named here so no node falls back to the theme's (or a transparent)
+   background: stack, scrolledwindow, viewport and the page box itself. */
 .content-area,
-.content-area viewport,
+stack.content-area,
 .content-area scrolledwindow,
+.content-area viewport,
+.content-area viewport.frame,
 .content-area .page,
-viewport.frame,
-viewport {
+scrolledwindow.content-scroller,
+scrolledwindow.content-scroller viewport {
   background-color: @bg_surface_2;
+  background-image: none;
   border: none;
 }
 
@@ -608,4 +614,25 @@ button.copy-icon image {
 }
 button.copy-icon:hover image {
   color: @accent;
+}
+
+/* pages paint their own 24 px gutter (see ui/pages/base.py) */
+.page.page-padded {
+  padding: 24px;
+}
+
+/* KPI tile used as a button (History → Change) */
+button.kpi-button {
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  border-radius: 6px;
+  padding: 0;
+  box-shadow: none;
+}
+button.kpi-button:hover .card {
+  border-color: @accent;
+}
+button.kpi-button:focus .card {
+  border-color: @accent;
 }

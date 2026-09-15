@@ -47,10 +47,7 @@ class ExplorerPage(BasePage):
     def build_content(self) -> None:
         # This page owns full-bleed chrome (toolbar/tree/status bar touch the
         # window edges in every mockup direction), so drop BasePage's margins.
-        self.set_margin_start(0)
-        self.set_margin_end(0)
-        self.set_margin_top(0)
-        self.set_margin_bottom(0)
+        self.get_style_context().remove_class("page-padded")  # full-bleed chrome
         self.set_spacing(0)
 
         self._error_count = 0

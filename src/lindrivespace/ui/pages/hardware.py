@@ -181,7 +181,10 @@ class HardwarePage(BasePage):
             return
         self._collecting = True
         self.refresh_button.set_sensitive(False)
+        # show_all() is a no-op on a no-show-all widget: lift it for the call.
+        self.loading_box.set_no_show_all(False)
         self.loading_box.show_all()
+        self.loading_box.set_no_show_all(True)
         self.loading_spinner.start()
 
         def worker() -> None:
