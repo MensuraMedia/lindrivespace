@@ -4,7 +4,7 @@
 See every mount and partition at a glance, then drill into folders and files to find out exactly
 what is eating your disk — TreeSize / WizTree style, with Linux-correct numbers.
 
-![Explorer](docs/screenshots/explorer.png)
+![Explorer — drilling into VirtualBox VMs under /home/user](docs/screenshots/explorer.png)
 
 > Status: **v0.1 — installable** (2026-09). Every screen below is built and packaged (`.deb`,
 > installer script, menu entry); see [Install and run](#install-and-run) and the [Roadmap](#roadmap).
@@ -59,7 +59,7 @@ Ubuntu's typeface and colour language.
 - **File types** grouped by class (video, image, archive, package cache, log, …).
 - **Age** histogram: allocated bytes by last-modified bucket (7 d, 30 d, 90 d, 1 y, older).
 
-![Analysis — Explorer with the treemap panel open](docs/screenshots/analysis.png)
+![Analysis — the same view with the treemap panel open](docs/screenshots/analysis.png)
 
 ### Actions and export
 - Open in file manager, open terminal here, copy path, move to trash (with confirmation).
