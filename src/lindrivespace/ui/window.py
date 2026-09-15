@@ -111,6 +111,10 @@ class MainWindow(Gtk.ApplicationWindow):
 
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.NONE)
+        # Size to the visible page only; otherwise the widest page (Explorer) forces a
+        # minimum the window manager may not honour, and the overflow paints black.
+        self.stack.set_hhomogeneous(False)
+        self.stack.set_vhomogeneous(False)
         self.stack.set_hexpand(True)
         self.stack.set_vexpand(True)
         self.stack.get_style_context().add_class("content-area")

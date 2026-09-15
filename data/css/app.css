@@ -594,3 +594,8 @@ treeview.view.mount-list header button {
 treeview.view.mount-list:selected {
   background-color: @bg_deep;
 }
+
+scrolledwindow.mount-list-frame {
+  border: 1px solid @line_soft;
+  border-radius: 0;
+}

@@ -150,6 +150,8 @@ class MountList(Gtk.ScrolledWindow):
     def __init__(self, theme: ThemeDefinition, fmt_bytes: Callable[[int], str]) -> None:
         super().__init__()
         self.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        self.set_shadow_type(Gtk.ShadowType.IN)  # the cell border colour runs around the table
+        self.get_style_context().add_class("mount-list-frame")
         self.theme = theme
         self.fmt_bytes = fmt_bytes
         self.store = Gtk.TreeStore(*COLUMN_TYPES)
@@ -178,6 +180,7 @@ class MountList(Gtk.ScrolledWindow):
         renderer = Gtk.CellRendererText()
         renderer.set_property("xalign", xalign)
         renderer.set_property("ypad", 7)
+        renderer.set_property("xpad", 6)  # ~4 px extra side margin in every cell
         renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
         if kind in ("device", "fstype"):
             renderer.set_property("family", self.theme.font_mono.split(",")[0])
@@ -195,6 +198,7 @@ class MountList(Gtk.ScrolledWindow):
         self.title_renderer = BadgeButtonRenderer(self.theme)
         self.title_renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
         self.title_renderer.set_property("ypad", 7)
+        self.title_renderer.set_property("xpad", 6)
         mount_col.pack_start(self.title_renderer, True)
         mount_col.set_cell_data_func(self.title_renderer, self._cell_func, "title")
         mount_col.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
@@ -218,6 +222,7 @@ class MountList(Gtk.ScrolledWindow):
 
         bar_col = Gtk.TreeViewColumn(title="Used %")
         self.bar_renderer = PercentBarRenderer(self.theme)
+        self.bar_renderer.set_property("xpad", 6)
         bar_col.pack_start(self.bar_renderer, True)
         bar_col.set_cell_data_func(self.bar_renderer, self._bar_func)
         bar_col.set_sizing(Gtk.TreeViewColumnSizing.FIXED)

@@ -6,7 +6,7 @@ class Dimensions:
     # Window
     WINDOW_DEFAULT_WIDTH = 1200
     WINDOW_DEFAULT_HEIGHT = 800
-    WINDOW_MIN_WIDTH = 900
+    WINDOW_MIN_WIDTH = 1000
     WINDOW_MIN_HEIGHT = 600
 
     # Sidebar (starter: 150 px, square logo area)

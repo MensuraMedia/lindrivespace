@@ -98,7 +98,7 @@ class ExplorerPage(BasePage):
         self.tree.set_vexpand(True)
         # A minimum width keeps GtkPaned from clamping the divider to 0 on its
         # first (tiny) allocation and collapsing the tree behind the panel.
-        self.tree.set_size_request(420, -1)
+        self.tree.set_size_request(380, -1)
         self.tree.connect("node-selected", self._on_node_selected)
         self.tree.connect("file-selected", self._on_file_selected)
         self.tree.connect("file-activated", self._on_file_activated)
