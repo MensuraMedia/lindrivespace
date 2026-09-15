@@ -2,6 +2,17 @@
 
 Format: date, decision, context, consequences. Newest first.
 
+## 2026-09-15 — Direction C dropped; Explorer = A table + collapsible D panel (user)
+Context: user instruction mid-build: "no need to build in Direction C. only direction A and
+Direction D's sidebar but make sure it can collapse".
+1. Explorer page: Direction A tree-table (built, WP8) + Direction D insight panel docked right.
+2. The panel MUST collapse: toolbar toggle + F9, persisted in settings `window.panel_visible`;
+   collapsed state hides the panel completely (no neumorphic rail).
+3. Direction C's neumorphic depth (raised cards, sunken wells, dial) is not used anywhere;
+   Overview mount cards stay flat (1 px line, top highlight) as rendered in the B mockup.
+4. The Overview page (mounts/partitions) is retained — it is the mounts feature from the original
+   brief, not a Direction C element. If the user wants it removed, that is a one-line registry change.
+
 ## 2026-09-14 — Document corrections adopted at build start
 Context: pre-build review of `docs/CONCEPT-AND-TECHNICAL-DESIGN.md` against the machine and GTK 3.24.
 1. No `GDK_BACKEND=offscreen` in GTK3 → UI tests run on `DISPLAY=:0` (or `broadwayd`) using `Gtk.OffscreenWindow`; `tests/conftest.py` skips them when `Gtk.init_check()` fails.

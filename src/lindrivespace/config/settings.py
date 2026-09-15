@@ -45,6 +45,8 @@ DEFAULTS: dict[str, Any] = {
         "show_hidden": False,
     },
     "window": {"width": 1200, "height": 800, "maximized": False, "panel_visible": True},
+    # Favourite folders/files: [{"path": str, "label": str, "added": "YYYY-MM-DD HH:MM"}]
+    "favorites": [],
     "explorer": {
         # Column order is user-reorderable by dragging headers; persisted here.
         "columns": ["name", "size", "alloc", "files", "dirs", "percent", "modified"],

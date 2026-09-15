@@ -7,3 +7,4 @@
 - [ ] Orchestrator after WP8/WP10/WP11: wire context-menu actions → services.actions, "Scan as administrator" → services.privilege, Snapshots "Save current scan" → explorer model.root.
 - [ ] Group C: WP9 insight panel (treemap/top files/types/age), WP12 settings page + light tokens + a11y, WP13 .deb + desktop + metainfo + README screenshots.
 - [ ] Add a LICENSE file (user decision).
+- [ ] WP14 Favorites: services/favorites.py + page (agent); orchestrator wires the star into the Explorer context menu/breadcrumb after WP9.

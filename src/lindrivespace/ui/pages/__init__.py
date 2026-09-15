@@ -41,6 +41,12 @@ def _explorer(window: MainWindow) -> BasePage:
     return ExplorerPage(window)
 
 
+def _favorites(window: MainWindow) -> BasePage:
+    from lindrivespace.ui.pages.favorites import FavoritesPage
+
+    return FavoritesPage(window)
+
+
 def _snapshots(window: MainWindow) -> BasePage:
     from lindrivespace.ui.pages.snapshots import SnapshotsPage
 
@@ -56,6 +62,7 @@ def _settings(window: MainWindow) -> BasePage:
 PAGES: list[PageSpec] = [
     PageSpec("overview", "Overview", "go-home-symbolic", _overview),
     PageSpec("explorer", "Explorer", "view-list-symbolic", _explorer, scrolled=False),
+    PageSpec("favorites", "Favorites", "starred-symbolic", _favorites),
     PageSpec("snapshots", "Snapshots", "document-save-symbolic", _snapshots),
     PageSpec("settings", "Settings", "emblem-system-symbolic", _settings, bottom=True),
 ]
