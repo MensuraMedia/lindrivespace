@@ -6,8 +6,8 @@ what is eating your disk — TreeSize / WizTree style, with Linux-correct number
 
 ![Overview](docs/screenshots/overview.png)
 
-> Status: **in build** (2026-09). Concept, technical design and mockups are complete and approved;
-> the code is being built work-package by work-package. See [Roadmap](#roadmap).
+> Status: **v0.1 — installable** (2026-09). Every screen below is built and packaged (`.deb`,
+> installer script, menu entry); see [Install and run](#install-and-run) and the [Roadmap](#roadmap).
 
 ---
 
@@ -27,15 +27,15 @@ Ubuntu's typeface and colour language.
 ## Features
 
 ### Overview — mounts and partitions
-- **List view (default)**: disks as section rows and one sortable row per mount with device, type, used, free, total, an inline used-% bar, the last scan and a star; double-click to scan, right-click for Scan, Open, Favorite and primary/secondary. A "Cards" view is one click away.
-- **Scans start by themselves.** A couple of seconds after launch every physical mount is queued (primary, secondary, `/`, then the rest). A scan strip at the top of the content area shows the running scan with a real progress bar (scanned of the mount's used space), the rate and an estimated countdown, plus Pause and Stop; cards show their own progress. Turn the auto-scan off under Settings › Scanning.
-- Every mounted filesystem as a card, grouped by physical disk (NVMe, SATA, USB, loop), with label,
-  device, filesystem type, used / free / total and a usage bar that turns amber at 85 % and red at 95 %.
-- Mark a **primary** and a **secondary** mountpoint in Settings › Mounts: those cards are badged and listed first.
+*(Pictured at the top of this page.)*
+- **One list**: disks as section rows and one sortable row per mount with device, type, used, free, total, an inline used-% bar and a star; double-click to scan, right-click for Scan, Open, Favorite and primary/secondary. Columns can be reordered, resized and hidden.
+- **Scans start by themselves.** A couple of seconds after launch every physical mount is queued (primary, secondary, `/`, then the rest). A scan strip at the top of the content area shows the running scan with a real progress bar (scanned of the mount's used space), the rate and an estimated countdown, plus Pause and Stop. Turn the auto-scan off under Settings › Scanning.
+- Every mounted filesystem grouped by physical disk (NVMe, SATA, USB, loop), with label, device, filesystem type, used / free / total and a usage bar that turns amber at 85 % and red at 95 %.
+- Mark a **primary** and a **secondary** mountpoint in Settings › Mounts: those rows are badged and listed first.
 - KPI tiles: total capacity, used, free, and how many mounts have been scanned.
 - Live hot-plug: USB drives appear and disappear as they are attached (udev monitor).
 - Noise hidden by default: snap `squashfs` loops, `tmpfs`, `proc`, `sysfs`, Docker overlays. One chip reveals them.
-- "Scan" on any card, or scan an arbitrary folder (file chooser, drag-and-drop, or `lindrivespace /path`).
+- "Scan" on any row, or scan an arbitrary folder (file chooser, drag-and-drop, or `lindrivespace /path`).
 
 ### Explorer — folders and files
 - Tree-table columns: **Name · Size · Allocated · Files · Folders · % of Parent · Modified** (Owner and Type optional).
@@ -50,11 +50,15 @@ Ubuntu's typeface and colour language.
   administrator through a polkit prompt — the elevated helper is a tiny stdlib-only process, never the GUI.
 - Cancel, pause, rescan a subtree, exclude a folder.
 
+![Explorer — /home with the user folder expanded](docs/screenshots/explorer.png)
+
 ### Insight panel (Analysis view, collapsible)
 - **Treemap** (squarified) of the selected row; click to select, double-click to zoom.
 - **Top files** inside the selection with path, size and modified date.
 - **File types** grouped by class (video, image, archive, package cache, log, …).
 - **Age** histogram: allocated bytes by last-modified bucket (7 d, 30 d, 90 d, 1 y, older).
+
+![Analysis — Explorer with the treemap panel open](docs/screenshots/analysis.png)
 
 ### Actions and export
 - Open in file manager, open terminal here, copy path, move to trash (with confirmation).
@@ -67,19 +71,29 @@ Ubuntu's typeface and colour language.
 - Pattern History keeps named bookmarks of a mount + period view.
 - Background collection: Settings › Background collection enables a systemd user timer that runs `lindrivespace --collect` (usage only, or with a full scan) hourly, every 6 h, daily or weekly, even when the app is closed.
 
+![History — trend, tiles and the “Where space changed” table](docs/screenshots/history.png)
+
 ### Favorites
 - Star folders or files from the Explorer (toolbar star, Ctrl+D or the context menu); the Favorites page lists them and opens each one's space view in a click. A file favourite opens its folder with the file selected.
+
+![Favorites](docs/screenshots/favorites.png)
 
 ### Hardware
 - What the kernel knows about the machine, no root required: system and chassis type, motherboard and firmware, CPU and memory, storage controllers, supported drive types, a disks table (link speed, block sizes, scheduler, TRIM, write cache) and live I/O rates.
 
+![Hardware — disks and live I/O first](docs/screenshots/hardware.png)
+
 ### Glossary
 - 120 short entries on Linux drives and space: disks and partitions, filesystems (what "ext" is, ext2/3/4, XFS, Btrfs, ZFS, vfat, squashfs, tmpfs, overlayfs), mounting, sizes and allocation, directories versus folders, storage subsystems and best practices, with search and category filters.
+
+![Glossary](docs/screenshots/glossary.png)
 
 ### Settings
 - Theme: Gray-Temperature Dark (default); Light and System-follow planned for v1.1.
 - Units: decimal GB (default) or binary GiB.
 - Scan defaults, exclusion list, hidden-filesystem rules, primary / secondary mountpoints.
+
+![Settings](docs/screenshots/settings.png)
 
 ### Diagnostics
 - Every uncaught error (main loop, worker threads, GTK callbacks) and every GTK warning is written to a rotating log under `~/.cache/lindrivespace/logs/` and shown in an in-window error bar with a details dialog.
@@ -87,45 +101,9 @@ Ubuntu's typeface and colour language.
 
 ## Screens
 
-Real screenshots of the application (1200 × 800, this machine's mounts, after the startup scan).
-The approved design mockups they were built from are in `docs/mockups/` (HTML plus PNG renders).
-
-### Overview
-KPI tiles and one row per mount grouped by disk: device, type, used/free/total, an inline Used %
-bar, a star for Favorites and Scan/Rescan. Columns can be reordered, resized and hidden.
-
-![Overview](docs/screenshots/overview.png)
-
-### Explorer
-The tree-table: Name · Size · Allocated · Files · Folders · Share % · Modified, filling
-progressively while the scan runs. Drag, resize, sort or hide columns from the header menu.
-
-![Explorer](docs/screenshots/explorer.png)
-
-### Analysis
-The Explorer with its insight panel open: treemap, largest files, file types and an age histogram
-for the selected folder. The panel collapses with the toolbar button or F9.
-
-![Analysis](docs/screenshots/analysis.png)
-
-### History
-Automatic usage trend per mount (Day / Week / Month / Year / All), First / Latest / Change /
-Growth-per-day tiles, and — after clicking **Change** — the folders and files that grew (red) or
-shrank (green) between two scans. Pattern History keeps named views.
-
-![History](docs/screenshots/history.png)
-
-### Hardware
-Disks and live I/O first, then system, board, CPU/memory, storage controllers, drive types and
-filesystems — all without root. Every card copies as text.
-
-![Hardware](docs/screenshots/hardware.png)
-
-### Glossary and Settings
-
-![Glossary](docs/screenshots/glossary.png)
-
-![Settings](docs/screenshots/settings.png)
+All screenshots above are real captures of the application (1200 × 800, this machine's mounts,
+after the startup scan) and live in `docs/screenshots/`. The approved design mockups they were
+built from are in `docs/mockups/` (HTML plus PNG renders).
 
 ## Design language
 
