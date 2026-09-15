@@ -561,3 +561,36 @@ treeview.view check:checked {
 treeview.view.grid-table {
   background-color: @bg_surface;
 }
+
+/* ---- content background: the theme's viewport must not paint over the token -- */
+.content-area,
+.content-area viewport,
+.content-area scrolledwindow,
+.content-area .page,
+viewport.frame,
+viewport {
+  background-color: @bg_surface_2;
+  border: none;
+}
+
+/* ---- Overview list: identical to the list mockup ---------------------------- */
+treeview.view.mount-list {
+  background-color: @bg_surface_2;
+  color: @fg;
+}
+treeview.view.mount-list.separator {
+  color: @line_soft;
+}
+treeview.view.mount-list header button {
+  background-color: @bg_surface;
+  border-bottom: 1px solid @highlight;
+  border-right: 1px solid @line;
+  color: @fg_muted;
+  font-size: 9pt;
+  font-weight: 700;
+  min-height: 30px;
+  padding: 0 10px;
+}
+treeview.view.mount-list:selected {
+  background-color: @bg_deep;
+}

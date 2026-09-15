@@ -16,7 +16,8 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("Pango", "1.0")
-from gi.repository import Gdk, GObject, Gtk, Pango  # noqa: E402
+gi.require_version("PangoCairo", "1.0")
+from gi.repository import Gdk, GObject, Gtk, Pango, PangoCairo  # noqa: E402
 
 from lindrivespace.config.layout import Layout  # noqa: E402
 from lindrivespace.config.theme import ThemeDefinition  # noqa: E402
@@ -61,6 +62,81 @@ COLUMN_TYPES = (
 )
 
 
+class BadgeButtonRenderer(Gtk.CellRendererText):
+    """Text renderer that draws an outlined "PRIMARY"-style badge after the name."""
+
+    badge = GObject.Property(type=str, default="")
+
+    def __init__(self, theme: ThemeDefinition) -> None:
+        super().__init__()
+        self.theme = theme
+
+    def do_render(self, cr, widget, background_area, cell_area, flags) -> None:  # type: ignore[no-untyped-def]
+        Gtk.CellRendererText.do_render(self, cr, widget, background_area, cell_area, flags)
+        badge = self.get_property("badge")
+        if not badge:
+            return
+        layout = widget.create_pango_layout(self.get_property("text") or "")
+        layout.set_font_description(Pango.FontDescription("Ubuntu Bold 10.5"))
+        text_w, _h = layout.get_pixel_size()
+        blayout = widget.create_pango_layout(badge)
+        blayout.set_font_description(Pango.FontDescription("Ubuntu Mono 7.5"))
+        bw, bh = blayout.get_pixel_size()
+        x = cell_area.x + self.get_property("xpad") + text_w + 10
+        h = bh + 4
+        y = cell_area.y + (cell_area.height - h) / 2
+        w = bw + 12
+        cr.save()
+        cr.set_source_rgb(*self.theme.rgb("accent"))
+        cr.set_line_width(1)
+        cr.rectangle(x + 0.5, y + 0.5, w - 1, h - 1)
+        cr.stroke()
+        cr.move_to(x + 6, y + 2)
+        PangoCairo.show_layout(cr, blayout)
+        cr.restore()
+
+
+class ButtonCellRenderer(Gtk.CellRenderer):
+    """A button-looking cell ("Rescan" / "Scan"); clicks are resolved by the view."""
+
+    label = GObject.Property(type=str, default="Scan")
+    visible_button = GObject.Property(type=bool, default=True)
+
+    def __init__(self, theme: ThemeDefinition) -> None:
+        super().__init__()
+        self.theme = theme
+        self.set_property("xpad", 4)
+
+    def do_get_preferred_width(self, _widget):  # type: ignore[no-untyped-def]
+        return (72, 72)
+
+    def do_get_preferred_height(self, _widget):  # type: ignore[no-untyped-def]
+        return (28, 28)
+
+    def do_render(self, cr, widget, _background_area, cell_area, _flags) -> None:  # type: ignore[no-untyped-def]
+        if not self.get_property("visible_button"):
+            return
+        layout = widget.create_pango_layout(self.get_property("label"))
+        layout.set_font_description(Pango.FontDescription("Ubuntu 9.5"))
+        tw, th = layout.get_pixel_size()
+        w = min(cell_area.width - 8, max(64, tw + 20))
+        h = 24
+        x = cell_area.x + 4
+        y = cell_area.y + (cell_area.height - h) / 2
+        cr.save()
+        cr.set_source_rgb(*self.theme.rgb("bg_surface_2"))
+        cr.rectangle(x, y, w, h)
+        cr.fill()
+        cr.set_source_rgb(*self.theme.rgb("line_soft"))
+        cr.set_line_width(1)
+        cr.rectangle(x + 0.5, y + 0.5, w - 1, h - 1)
+        cr.stroke()
+        cr.set_source_rgb(*self.theme.rgb("fg"))
+        cr.move_to(x + (w - tw) / 2, y + (h - th) / 2)
+        PangoCairo.show_layout(cr, layout)
+        cr.restore()
+
+
 class MountList(Gtk.ScrolledWindow):
     __gtype_name__ = "LdsMountList"
     __gsignals__ = {
@@ -82,8 +158,8 @@ class MountList(Gtk.ScrolledWindow):
         self.view.set_enable_tree_lines(False)
         self.view.set_show_expanders(False)
         self.view.set_level_indentation(0)
-        self.view.get_style_context().add_class("grid-table")
-        self.view.set_grid_lines(Gtk.TreeViewGridLines.HORIZONTAL)
+        self.view.get_style_context().add_class("mount-list")
+        self.view.set_grid_lines(Gtk.TreeViewGridLines.BOTH)
         self.view.set_search_column(int(Col.TITLE))
         self._iters: dict[str, Gtk.TreeIter] = {}
         self._build_columns()
@@ -101,7 +177,10 @@ class MountList(Gtk.ScrolledWindow):
         column = Gtk.TreeViewColumn(title=title)
         renderer = Gtk.CellRendererText()
         renderer.set_property("xalign", xalign)
+        renderer.set_property("ypad", 7)
         renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
+        if kind in ("device", "fstype"):
+            renderer.set_property("family", self.theme.font_mono.split(",")[0])
         column.pack_start(renderer, True)
         column.set_cell_data_func(renderer, self._cell_func, kind)
         column.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
@@ -112,7 +191,16 @@ class MountList(Gtk.ScrolledWindow):
         return column
 
     def _build_columns(self) -> None:
-        mount_col = self._text_col("Mount", "title", width=220, expand=True)
+        mount_col = Gtk.TreeViewColumn(title="Mount")
+        self.title_renderer = BadgeButtonRenderer(self.theme)
+        self.title_renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
+        self.title_renderer.set_property("ypad", 7)
+        mount_col.pack_start(self.title_renderer, True)
+        mount_col.set_cell_data_func(self.title_renderer, self._cell_func, "title")
+        mount_col.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
+        mount_col.set_fixed_width(200)
+        mount_col.set_expand(True)
+        mount_col.set_resizable(True)
         mount_col.set_sort_column_id(int(Col.TITLE))
         self.view.append_column(mount_col)
         self.view.set_expander_column(mount_col)
@@ -144,10 +232,14 @@ class MountList(Gtk.ScrolledWindow):
 
         star_col = Gtk.TreeViewColumn(title="")
         self.star_renderer = Gtk.CellRendererPixbuf()
+        self.star_renderer.set_property("xpad", 6)
         star_col.pack_start(self.star_renderer, False)
         star_col.set_cell_data_func(self.star_renderer, self._star_func)
+        self.button_renderer = ButtonCellRenderer(self.theme)
+        star_col.pack_start(self.button_renderer, False)
+        star_col.set_cell_data_func(self.button_renderer, self._button_func)
         star_col.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
-        star_col.set_fixed_width(32)
+        star_col.set_fixed_width(112)
         self.view.append_column(star_col)
         self.star_column = star_col
 
@@ -156,23 +248,35 @@ class MountList(Gtk.ScrolledWindow):
 
     # ---- cell functions ---------------------------------------------------------
 
+    def _rgba(self, token: str) -> Gdk.RGBA:
+        r, g, b, a = self.theme.rgba(token, 1.0)
+        return Gdk.RGBA(red=r, green=g, blue=b, alpha=a)
+
     def _cell_func(self, _col, cell, model, it, kind: str) -> None:  # type: ignore[no-untyped-def]
         is_disk = model.get_value(it, Col.KIND) == "disk"
         cell.set_property("weight", model.get_value(it, Col.WEIGHT))
         cell.set_property("foreground-rgba", None)
+        cell.set_property("cell-background-rgba", self._rgba("bg_surface") if is_disk else None)
+        if cell.find_property("badge") is not None:
+            cell.set_property("badge", "")
         if is_disk:
             if kind == "title":
                 detail = model.get_value(it, Col.DEVICE)
                 title = model.get_value(it, Col.TITLE)
-                cell.set_property("text", f"{title}   ·   {detail}" if detail else title)
-                cell.set_property("weight", 500)
+                text = f"{title} · {detail}" if detail else title
+                cell.set_property("text", text.upper())
+                cell.set_property("weight", 700)
+                cell.set_property("foreground-rgba", self._rgba("fg_muted"))
+                cell.set_property("scale", 0.9)
             else:
                 cell.set_property("text", "")
             return
+        cell.set_property("scale", 1.0)
         if kind == "title":
             role = model.get_value(it, Col.ROLE)
-            text = model.get_value(it, Col.TITLE)
-            cell.set_property("text", f"{text}   {role.upper()}" if role else text)
+            cell.set_property("text", model.get_value(it, Col.TITLE))
+            cell.set_property("weight", 700)
+            cell.set_property("badge", role.upper() if role else "")
         elif kind in ("used", "free", "total"):
             col = {"used": Col.USED, "free": Col.FREE, "total": Col.TOTAL}[kind]
             cell.set_property("text", self.fmt_bytes(int(model.get_value(it, col))))
@@ -182,25 +286,39 @@ class MountList(Gtk.ScrolledWindow):
             cell.set_property("text", model.get_value(it, Col.FSTYPE))
         elif kind == "scanned":
             cell.set_property("text", model.get_value(it, Col.SCANNED))
-            r, g, b, a = self.theme.rgba("fg_dim", 1.0)
-            cell.set_property("foreground-rgba", Gdk.RGBA(red=r, green=g, blue=b, alpha=a))
+            cell.set_property("foreground-rgba", self._rgba("fg_dim"))
 
     def _bar_func(self, _col, cell, model, it, _data=None) -> None:  # type: ignore[no-untyped-def]
-        if model.get_value(it, Col.KIND) == "disk":
+        is_disk = model.get_value(it, Col.KIND) == "disk"
+        cell.set_property("cell-background-rgba", self._rgba("bg_surface") if is_disk else None)
+        if is_disk:
             cell.set_property("visible", False)
             return
         cell.set_property("visible", True)
         pct = float(model.get_value(it, Col.PERCENT))
         cell.set_property("percent", pct)
-        cell.set_property("text", f"{pct:.0f} %")
+        cell.set_property("text", " ")  # bar only, as in the mockup
         cell.set_property("emphasis", pct >= 85.0)
 
     def _star_func(self, _col, cell, model, it, _data=None) -> None:  # type: ignore[no-untyped-def]
-        if model.get_value(it, Col.KIND) == "disk":
+        is_disk = model.get_value(it, Col.KIND) == "disk"
+        cell.set_property("cell-background-rgba", self._rgba("bg_surface") if is_disk else None)
+        if is_disk:
             cell.set_property("icon-name", "")
             return
         fav = bool(model.get_value(it, Col.FAVORITE))
         cell.set_property("icon-name", "starred-symbolic" if fav else "non-starred-symbolic")
+
+    def _button_func(self, _col, cell, model, it, _data=None) -> None:  # type: ignore[no-untyped-def]
+        is_disk = model.get_value(it, Col.KIND) == "disk"
+        cell.set_property("cell-background-rgba", self._rgba("bg_surface") if is_disk else None)
+        cell.set_property("visible_button", not is_disk)
+        scanned = str(model.get_value(it, Col.SCANNED))
+        state = str(model.get_value(it, Col.STATE))
+        if state in ("scanning", "queued"):
+            cell.set_property("label", "…")
+        else:
+            cell.set_property("label", "Scan" if scanned == "not scanned" else "Rescan")
 
     # ---- data -------------------------------------------------------------------
 
@@ -248,7 +366,12 @@ class MountList(Gtk.ScrolledWindow):
         elif d.scan_state == "queued":
             scanned = "queued"
         elif d.scanned_at:
-            scanned = f"{d.scanned_at}" + (f" · {d.scan_detail}" if d.scan_detail else "")
+            import time as _time
+
+            stamp = d.scanned_at
+            if stamp.startswith(_time.strftime("%Y-%m-%d")):
+                stamp = stamp[11:] or stamp  # "06:27" for today's scans
+            scanned = stamp + (f" · {d.scan_detail}" if d.scan_detail else "")
         else:
             scanned = "not scanned"
         device = f"{d.device}"
@@ -302,9 +425,16 @@ class MountList(Gtk.ScrolledWindow):
             return False
         mountpoint = str(self.store.get_value(it, Col.KEY))
         if event.button == 1 and column is self.star_column:
-            new_state = not bool(self.store.get_value(it, Col.FAVORITE))
-            self.store.set_value(it, Col.FAVORITE, new_state)
-            self.emit("favorite-toggled", mountpoint, new_state)
+            found, x_off, width = column.cell_get_position(self.star_renderer)
+            # cell_get_position is relative to the column; the cell area gives the column's x.
+            rect = view.get_cell_area(path, column)
+            local_x = int(event.x) - rect.x
+            if found and local_x <= x_off + width:
+                new_state = not bool(self.store.get_value(it, Col.FAVORITE))
+                self.store.set_value(it, Col.FAVORITE, new_state)
+                self.emit("favorite-toggled", mountpoint, new_state)
+            else:
+                self.emit("scan-requested", mountpoint)
             return True
         if event.button == 3:
             view.get_selection().select_iter(it)
