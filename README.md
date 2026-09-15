@@ -1,0 +1,206 @@
+# LinDriveSpace
+
+**A native GTK3 disk-space explorer for Linux Mint and Debian-family desktops.**
+See every mount and partition at a glance, then drill into folders and files to find out exactly
+what is eating your disk — TreeSize / WizTree style, with Linux-correct numbers.
+
+![Overview dashboard — Direction B](docs/mockups/images/direction-b-overview-dashboard.png)
+
+> Status: **in build** (2026-09). Concept, technical design and mockups are complete and approved;
+> the code is being built work-package by work-package. See [Roadmap](#roadmap).
+
+---
+
+## Why LinDriveSpace
+
+Linux has `du`, `ncdu`, `baobab` and GNOME Disks. None of them show, in one window, the three things
+you actually need when a disk fills up:
+
+1. **Which filesystem is full** — every mount with used / free and a usage ring, hot-plugged drives included.
+2. **Where inside it the bytes went** — a sortable tree of folders with *apparent* and *allocated* size,
+   file and folder counts, a percent-of-parent bar and the last-modified date.
+3. **What to delete** — the largest files in any subtree, a treemap, file-type totals and an age histogram.
+
+LinDriveSpace does all three in a single native GTK 3 application with no web runtime, styled with
+Ubuntu's typeface and colour language.
+
+## Features
+
+### Overview — mounts and partitions
+- Every mounted filesystem as a card, grouped by physical disk (NVMe, SATA, USB, loop), with label,
+  device, filesystem type, used / free / total and a usage ring that turns amber at 85 % and red at 95 %.
+- KPI tiles: total capacity, used, free, and how many mounts have been scanned.
+- Live hot-plug: USB drives appear and disappear as they are attached (udev monitor).
+- Noise hidden by default: snap `squashfs` loops, `tmpfs`, `proc`, `sysfs`, Docker overlays. One chip reveals them.
+- "Scan" on any card, or scan an arbitrary folder (file chooser, drag-and-drop, or `lindrivespace /path`).
+
+### Explorer — folders and files
+- Tree-table columns: **Name · Size · Allocated · Files · Folders · % of Parent · Modified** (Owner and Type optional).
+- **Two sizes, always.** *Size* is apparent (`st_size`); *Allocated* is what actually occupies the disk
+  (`st_blocks × 512`, what `du` reports). Allocated is the default sort and bar basis; one click switches.
+- Hard links counted once; symlinks never followed; mount boundaries respected (crossing is opt-in).
+- Progressive fill: the root row appears immediately and the tree fills as subtrees settle; scanning never blocks the UI.
+- Largest-first sort, bold rows for the top children of each parent, inline percent bars, breadcrumb strip, status bar.
+- Denied subtrees (other users' homes, `/var/lib/docker`) are marked with a lock and can be re-scanned as
+  administrator through a polkit prompt — the elevated helper is a tiny stdlib-only process, never the GUI.
+- Cancel, pause, rescan a subtree, exclude a folder.
+
+### Insight panel
+- **Treemap** (squarified) of the selected row; click to select, double-click to zoom.
+- **Top files** inside the selection with path, size and modified date.
+- **File types** grouped by class (video, image, archive, package cache, log, …).
+- **Age** histogram: allocated bytes by last-modified bucket (7 d, 30 d, 90 d, 1 y, older).
+
+### Actions and export
+- Open in file manager, open terminal here, copy path, move to trash (with confirmation).
+- Export the tree as CSV or JSON; export the treemap as PNG.
+- Snapshots: save a scan and diff it against a later one (grew / shrank / new / deleted).
+
+### Settings
+- Theme: Gray-Temperature Dark (default); Light and System-follow planned for v1.1.
+- Units: decimal GB (default) or binary GiB.
+- Scan defaults, exclusion list, hidden-filesystem rules.
+
+## Screens
+
+The mockups below are the approved design reference. They are static HTML renders
+(`docs/mockups/lindrivespace-mockups.html`), captured at the app's default 1180 × 720 window,
+using this machine's real mount layout as sample data. The build follows **Direction B as the first
+screen with Direction D's insight panel inside the Explorer**; A's tree-table is the Explorer core in every
+direction, and C's soft depth is used only on mount cards and rings.
+
+### Direction B — Overview Dashboard (first screen)
+Mounts first, then drill in. KPI tiles, mount cards grouped by disk, recent scans.
+
+![Direction B — Overview Dashboard](docs/mockups/images/direction-b-overview-dashboard.png)
+
+### Direction D — Analyst Split (Explorer with insight panel)
+Tree-table on the left; treemap, largest files and age histogram docked on the right.
+
+![Direction D — Analyst Split](docs/mockups/images/direction-d-analyst-split.png)
+
+### Direction A — Classic Tree-Table
+The reference layout, kept as the Explorer's default when the insight panel is collapsed.
+
+![Direction A — Classic Tree-Table](docs/mockups/images/direction-a-classic-tree-table.png)
+
+### Direction C — Gray-Temperature Cards
+The UI-kit reference taken literally: raised cards, sunken wells, a large dial, round mode buttons.
+Its card and ring treatment is reused on the Overview page.
+
+![Direction C — Gray-Temperature Cards](docs/mockups/images/direction-c-gray-temperature-cards.png)
+
+### Component sheet
+Tokens, type ramp and widget states shared by every screen. Names match `config/theme.py` / `tokens.css`.
+
+![Component sheet](docs/mockups/images/component-sheet.png)
+
+## Design language
+
+| | |
+|---|---|
+| **Type** | Ubuntu (UI, tabular figures for numbers), Ubuntu Mono (paths, raw bytes, status bar) |
+| **Surfaces** | `#495060` canvas · `#343946` surface · `#2d323d` tree body · `#21252f` wells · `#1b1e29` selection |
+| **Accent** | Ubuntu orange `#e95420` (bars, active nav, rings), `#fd5c01` hover; aubergine `#772953` and warm grey `#aea79f` as secondary series |
+| **Semantic** | green `#3fb950` free, amber `#f5a623` ≥ 85 %, red `#e0362c` ≥ 95 % / denied |
+| **Metrics** | 150 px sidebar, 24 px tree rows, 12 × 96 px percent bars, 64 px rings, 4 px base unit |
+
+The palette is sampled from the gray-temperature kit in
+[universal-instruction-set/universal-themes](https://github.com/MensuraMedia/universal-instruction-set/tree/main/universal-themes/image-reference)
+and squared with the Ubuntu brand colours.
+
+## Architecture
+
+```
+src/lindrivespace/
+├── app.py            Gtk.Application, CLI args, CSS install
+├── config/           layout metrics · theme tokens (dataclass → tokens.css) · settings store
+├── core/             PURE PYTHON — no GTK imports
+│   ├── fsnode.py     __slots__ node: size, alloc, files, dirs, mtime, children
+│   ├── scanner.py    iterative os.scandir walk, mount boundary, hard-link dedupe, cancel/pause
+│   ├── events.py     DirStarted / DirDone / Progress / Finished / Error (queue contract)
+│   ├── mounts.py     psutil + /proc/self/mountinfo + lsblk topology + udev monitor
+│   ├── treemap.py    squarified layout · classify.py · snapshot.py · units.py
+│   └── scanner_cli.py  stdlib-only NDJSON scanner used by the pkexec helper
+├── models/           Gtk.TreeStore adapter (lazy children, model-owned sort) · mounts list store
+├── services/         scan controller (thread → queue → GLib drain), actions, export, privilege
+└── ui/               window, sidebar, pages (overview, explorer, snapshots, settings), widgets
+```
+
+- **Core purity.** `core/` imports nothing from GTK. It is unit-tested headless, runs as the root helper,
+  and will back a future CLI. A test imports every core module with `gi` blocked.
+- **Threading.** One scanner thread per scan; events flow one-way through `queue.SimpleQueue` and are
+  drained on the GTK main loop in ≤ 8 ms slices, so scrolling stays smooth during a scan.
+- **Tree performance.** Rows are appended lazily on expand, columns are fixed-size, the view runs in
+  fixed-height mode, and sorting is owned by the model, not GTK.
+- **Foundation.** Built on an optimized fork of
+  [gtk-python-dashboard-starter](https://github.com/mikesdatawork/gtk-python-dashboard-starter):
+  the 150 px sidebar, page stack and CSS-provider pattern are kept; the bare `Gtk.Window` becomes a
+  `Gtk.Application`, seven hard-coded themes become one token-driven theme.
+
+The full design is in [docs/CONCEPT-AND-TECHNICAL-DESIGN.md](docs/CONCEPT-AND-TECHNICAL-DESIGN.md).
+
+## Requirements
+
+- Linux Mint 22.x / Ubuntu 24.04 / Debian 12+ (any GTK 3.24 desktop)
+- Python 3.10+ (3.12 on Mint 22)
+- System packages: `python3-gi gir1.2-gtk-3.0 python3-cairo python3-psutil python3-pyudev fonts-ubuntu policykit-1`
+
+## Install and run
+
+```bash
+git clone https://github.com/MensuraMedia/lindrivespace.git
+cd lindrivespace
+sudo apt install python3-gi gir1.2-gtk-3.0 python3-cairo python3-psutil python3-pyudev fonts-ubuntu
+./run.sh                 # system Python + system PyGObject; no virtualenv needed
+./run.sh /mnt/data       # open straight into a scan of a folder
+```
+
+A `.deb` package (`debian/`) is part of the v1.0 milestone and will install the desktop entry, icon,
+AppStream metadata and the polkit policy for "Scan as administrator".
+
+## Development
+
+```bash
+python3 -m venv --system-site-packages .venv && .venv/bin/pip install ruff mypy pytest
+.venv/bin/ruff check src tests && .venv/bin/ruff format --check src tests
+.venv/bin/mypy --strict src/lindrivespace/core
+.venv/bin/python -m pytest -q tests/core                       # headless
+DISPLAY=:0 .venv/bin/python -m pytest -q tests/ui tests/models # needs a display (or broadwayd)
+python3 -m lindrivespace --smoke                               # builds the window and exits
+python3 -m lindrivespace --screenshot /tmp/lds.png             # renders the window to PNG
+```
+
+The project is governed by the
+[universal-instruction-set](https://github.com/MensuraMedia/universal-instruction-set) (v2026.04):
+`.claude/` holds the rules, hooks, commands, agents and memory; `changelog.md` records every change;
+architectural decisions live in `.claude/memory/decisions.md`.
+
+## Roadmap
+
+| Milestone | Scope | Status |
+|---|---|---|
+| M0 | Governance, scaffold, themed window with sidebar | in progress |
+| M1 | Core scanner + units + tests + bench | planned |
+| M2 | Mount discovery + Overview page | planned |
+| M3 | Explorer tree-table, progressive fill, sort, context menu | planned |
+| M4 | Insight panel: treemap, top files, types, age | planned |
+| M5 | Actions, export, snapshots + diff | planned |
+| M6 | Scan as administrator, settings, light tokens, a11y pass | planned |
+| M7 | `.deb` package, desktop entry, AppStream, v1.0.0 | planned |
+
+v1.1: light theme CSS, Flatpak, bind-mount detection via mountinfo, multi-threaded scanning.
+
+## Non-goals (v1)
+
+Not a file manager (no move / copy / rename), no background daemon, no remote or SSH filesystems.
+
+## Credits
+
+- Foundation: [mikesdatawork/gtk-python-dashboard-starter](https://github.com/mikesdatawork/gtk-python-dashboard-starter)
+- Standards and theme references: [MensuraMedia/universal-instruction-set](https://github.com/MensuraMedia/universal-instruction-set)
+- Ubuntu font family by Dalton Maag / Canonical
+
+## License
+
+Free for personal and educational use (inherits the starter's terms until a licence file is added).

@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+build/
+dist/
+# Debian packaging output
+debian/.debhelper/
+debian/lindrivespace/
+debian/files
+debian/*.log
+debian/*.substvars
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+# Secrets
+.env*
+# Local Claude state
+.claude/settings.local.json

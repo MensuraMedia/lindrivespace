@@ -1,0 +1,17 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+*.log
+.env*
+**/.git/
+debian/.debhelper/
+debian/lindrivespace/
+docs/mockups/*.png
+example_drive_space.png

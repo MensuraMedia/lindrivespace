@@ -1,0 +1,523 @@
+<title>LinDriveSpace Mockups</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap">
+<style>
+  :root{
+    --canvas:#495060; --surface:#343946; --surface2:#2d323d; --sunken:#21252f; --deep:#1b1e29;
+    --line:#1c1f28; --line-soft:#3e414d; --hi:#4c505e;
+    --fg:#eeeeee; --muted:#b9bcc6; --dim:#7d8290;
+    --accent:#e95420; --hot:#fd5c01; --accent-soft:rgba(233,84,32,.22);
+    --aubergine:#772953; --warm:#aea79f; --ok:#3fb950; --warn:#f5a623; --danger:#e0362c;
+    --ui:"Ubuntu","Cantarell","Segoe UI",sans-serif; --mono:"Ubuntu Mono","DejaVu Sans Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--fg);font-family:var(--ui);font-size:14px;line-height:1.45}
+  .wrap{max-width:1240px;margin:0 auto;padding:32px 24px 64px}
+  .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+  h1{font-size:34px;font-weight:300;margin:6px 0 10px;letter-spacing:-.01em;text-wrap:balance}
+  h1 b{font-weight:500}
+  .lede{max-width:66ch;color:var(--muted);margin:0 0 18px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:40px}
+  .chip{font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:4px 10px;color:var(--muted)}
+  .chip b{color:var(--fg);font-weight:400}
+  .board{margin-bottom:56px}
+  .board-head{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:baseline;margin-bottom:14px}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--accent);border:1px solid var(--accent);border-radius:3px;padding:2px 8px;white-space:nowrap}
+  .board h2{margin:0;font-size:22px;font-weight:500}
+  .board-head p{grid-column:2;margin:0;color:var(--muted);max-width:80ch}
+  .board-head p b{color:var(--fg);font-weight:500}
+  .fit{position:relative;overflow:hidden;border-radius:10px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  .app{width:1180px;height:720px;transform-origin:0 0;background:var(--surface2);display:grid;grid-template-rows:44px 1fr;grid-template-columns:150px 1fr;font-size:13px;position:relative;overflow:hidden}
+  /* header bar (CSD) */
+  .hb{grid-column:1/3;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 12px}
+  .hb .title{font-weight:500;font-size:13px}
+  .hb .sub{color:var(--dim);font-size:12px}
+  .hb .grow{flex:1}
+  .hb .wc{display:flex;gap:10px;color:var(--muted)}
+  .hb .wc svg{width:14px;height:14px}
+  .pill{display:inline-flex;align-items:center;gap:8px;background:var(--sunken);border:1px solid var(--line);border-radius:20px;padding:3px 10px 3px 6px;font-size:12px;color:var(--muted)}
+  .pill .p{width:120px;height:6px;background:var(--deep);border-radius:3px;overflow:hidden}
+  .pill .p i{display:block;height:100%;background:var(--accent);width:63%}
+  .pill .stop{width:14px;height:14px;border-radius:2px;background:var(--danger)}
+  .search{display:flex;align-items:center;gap:6px;background:var(--sunken);border:1px solid var(--line);border-radius:4px;padding:4px 8px;color:var(--dim);font-size:12px;width:200px}
+  .search svg{width:14px;height:14px}
+  .hbtn{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--line);border-radius:4px;padding:4px 10px;font-size:12px;color:var(--fg)}
+  .hbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+  .hbtn svg{width:14px;height:14px}
+  /* sidebar (starter: 150px, logo 150x150, nav 32px) */
+  .sb{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column}
+  .logo{height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-bottom:1px solid var(--line)}
+  .logo .mark{width:64px;height:64px}
+  .logo .name{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .nav{display:flex;flex-direction:column}
+  .nav a{display:flex;align-items:center;gap:8px;height:32px;padding:0 12px;color:var(--muted);border-bottom:1px solid var(--line);text-decoration:none;font-size:12.5px}
+  .nav a svg{width:16px;height:16px;flex:none}
+  .nav a.active{background:var(--accent);color:#fff;font-weight:500}
+  .nav .spacer{flex:1}
+  .nav a.bottom{border-top:1px solid var(--line);border-bottom:none}
+  .content{overflow:hidden;display:flex;flex-direction:column;min-width:0}
+  /* tree table */
+  .tt{display:grid;grid-template-columns:minmax(300px,1fr) 96px 96px 84px 76px 150px 104px;font-size:12.5px;font-variant-numeric:tabular-nums}
+  .tt.compact{grid-template-columns:minmax(220px,1fr) 88px 88px 140px 96px}
+  .tt.wide{grid-template-columns:minmax(300px,1fr) 96px 96px 84px 76px 150px 104px 90px}
+  .tt .h{position:sticky;top:0;background:var(--surface);color:var(--muted);font-size:11px;font-weight:500;letter-spacing:.04em;padding:0 8px;height:28px;display:flex;align-items:center;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+  .tt .h.r,.tt .c.r{justify-content:flex-end;text-align:right}
+  .tt .h .sort{margin-left:6px;color:var(--accent);font-size:9px}
+  .tt .c{height:24px;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fg)}
+  .tt .row-hover>.c{background:var(--surface)}
+  .tt .sel>.c{background:var(--deep)}
+  .tt .sel>.c:first-child{box-shadow:inset 2px 0 0 var(--accent)}
+  .tt .bold>.c{font-weight:500}
+  .tt .muted>.c{color:var(--dim)}
+  .tt .name{gap:6px}
+  .tt .arrow{width:10px;color:var(--dim);font-size:10px;text-align:center;flex:none;font-family:var(--mono)}
+  .tt .name svg{width:14px;height:14px;flex:none;color:var(--warm)}
+  .tt .name .sz{font-family:var(--ui);color:var(--muted);min-width:64px;text-align:right;margin-right:6px}
+  .tt .bold>.name .sz{color:var(--fg)}
+  .tt .lock{color:var(--danger)}
+  .bar{position:relative;width:100%;height:12px;background:var(--sunken);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+  .bar i{position:absolute;inset:0;width:0;background:var(--accent);box-shadow:0 0 8px var(--accent-soft)}
+  .bar b{position:absolute;inset:0;font-weight:400;font-size:10.5px;line-height:11px;text-align:center;color:var(--fg);font-family:var(--mono)}
+  .rowgrp{display:contents}
+  .statusbar{margin-top:auto;height:26px;border-top:1px solid var(--line);background:var(--surface);display:flex;align-items:center;gap:18px;padding:0 12px;font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+  .statusbar .grow{flex:1}
+  .scroll,.page{scrollbar-color:var(--hi) var(--sunken);scrollbar-width:thin}
+  .scroll{overflow:auto;flex:1;min-height:0}
+  .crumbs{display:flex;align-items:center;gap:6px;padding:8px 12px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--surface2)}
+  .crumbs svg{width:14px;height:14px;color:var(--muted);flex:none}
+  .crumbs b{color:var(--fg);font-weight:400}
+  .crumbs .sep{color:var(--dim)}
+  .crumbs .kv{margin-left:auto;font-family:var(--mono);font-size:11.5px;display:flex;gap:16px}
+  .crumbs .kv em{font-style:normal;color:var(--fg)}
+  /* overview */
+  .page{padding:20px 24px;display:flex;flex-direction:column;gap:18px;overflow:auto;flex:1}
+  .page h3{margin:0;font-size:18px;font-weight:500}
+  .page .sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-top:1px solid var(--hi);border-radius:6px;padding:12px 14px}
+  .kpi .l{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .kpi .v{font-size:26px;font-weight:300;margin-top:2px;font-variant-numeric:tabular-nums}
+  .kpi .v small{font-size:13px;color:var(--muted);margin-left:4px}
+  .kpi .t{font-size:11.5px;color:var(--dim);margin-top:2px}
+  .grp{display:flex;flex-direction:column;gap:10px}
+  .grp .gh{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+  .grp .gh b{color:var(--fg);font-weight:500;font-size:13px}
+  .grp .gh .meta{font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+  .mc{background:var(--surface);border:1px solid var(--line);border-top:1px solid var(--hi);border-radius:6px;padding:12px;display:grid;grid-template-columns:64px 1fr;gap:6px 12px;align-items:center;position:relative}
+  .mc.sel{border:1px solid var(--accent)}
+  .mc .ring{width:64px;height:64px;grid-row:1/5}
+  .mc .n{font-weight:500;font-size:13.5px;display:flex;align-items:center;gap:6px}
+  .mc .n svg{width:14px;height:14px;color:var(--muted)}
+  .mc .d{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  .mc .u{font-size:12px;color:var(--fg);font-variant-numeric:tabular-nums}
+  .mc .u span{color:var(--dim)}
+  .mc .act{position:absolute;right:10px;bottom:10px}
+  .btn{white-space:nowrap;display:inline-flex;align-items:center;gap:6px;border-radius:4px;padding:4px 10px;font-size:12px;border:1px solid var(--line);background:var(--surface2);color:var(--fg)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+  .btn.ghost{background:transparent;color:var(--muted)}
+  .btn svg{width:13px;height:13px}
+  .list{background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .list .lh{display:grid;grid-template-columns:1fr 110px 110px 90px 100px;padding:6px 12px;font-size:11px;color:var(--muted);letter-spacing:.04em;border-bottom:1px solid var(--line)}
+  .list .lr{display:grid;grid-template-columns:1fr 110px 110px 90px 100px;padding:6px 12px;font-size:12.5px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+  .list .lr:last-child{border-bottom:none}
+  .list .lr .m{font-family:var(--mono);color:var(--muted)}
+  .list .r{text-align:right}
+  /* neumorphic direction C */
+  .neu{background:var(--surface);border-radius:14px;box-shadow:8px 8px 18px rgba(0,0,0,.35),-4px -4px 12px rgba(255,255,255,.04),inset 0 1px 0 rgba(255,255,255,.06)}
+  .neu-in{background:var(--surface2);border-radius:12px;box-shadow:inset 6px 6px 14px rgba(0,0,0,.4),inset -3px -3px 10px rgba(255,255,255,.03)}
+  .cbtn{width:48px;height:48px;border-radius:50%;background:var(--surface);box-shadow:5px 5px 12px rgba(0,0,0,.4),-3px -3px 8px rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;color:var(--fg)}
+  .cbtn.on{box-shadow:inset 4px 4px 10px rgba(0,0,0,.45),inset -2px -2px 6px rgba(255,255,255,.04);color:var(--accent)}
+  .cbtn svg{width:20px;height:20px}
+  /* treemap + insights (D) */
+  .split{display:grid;grid-template-columns:1fr 372px;flex:1;min-height:0}
+  .panel{border-left:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;min-height:0}
+  .tabs{display:flex;border-bottom:1px solid var(--line)}
+  .tabs span{flex:1;text-align:center;padding:8px 0;font-size:12px;color:var(--muted);border-bottom:2px solid transparent}
+  .tabs span.on{color:var(--fg);border-bottom-color:var(--accent);font-weight:500}
+  .tm{position:relative;height:230px;margin:12px;border-radius:4px;overflow:hidden;background:var(--sunken)}
+  .tm div{position:absolute;overflow:hidden;font-size:10.5px;padding:3px 5px;color:#fff;border:1px solid rgba(27,30,41,.9);white-space:nowrap;text-overflow:ellipsis}
+  .tm div small{display:block;font-family:var(--mono);opacity:.85;font-size:10px}
+  .ph{padding:0 12px 6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between}
+  .ph span{text-transform:none;letter-spacing:0;font-family:var(--mono);color:var(--dim)}
+  .files{padding:0 12px 12px;display:flex;flex-direction:column;gap:5px;font-size:12px}
+  .files .f{display:grid;grid-template-columns:1fr 70px;gap:8px;align-items:center}
+  .files .f .p{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .files .f .p b{color:var(--fg);font-weight:400}
+  .files .f .s{text-align:right;font-variant-numeric:tabular-nums}
+  .files .f .w{grid-column:1/3;height:4px;background:var(--sunken);border-radius:2px;overflow:hidden}
+  .files .f .w i{display:block;height:100%;background:var(--warm)}
+  .age{display:flex;align-items:flex-end;gap:6px;height:64px;padding:0 12px 4px;margin-bottom:22px}
+  .age div{flex:1;background:var(--aubergine);border-radius:2px 2px 0 0;position:relative}
+  .age div.hot{background:var(--accent)}
+  .age div span{position:absolute;bottom:-16px;left:0;right:0;text-align:center;font-size:10px;color:var(--dim);font-family:var(--mono)}
+  /* component sheet */
+  .sheet{background:var(--surface2);border-radius:10px;padding:24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px 32px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  .sheet h4{margin:0 0 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+  .sw{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .sw div{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  .sw i{width:26px;height:26px;border-radius:4px;border:1px solid var(--line);flex:none}
+  .sw b{color:var(--fg);font-weight:400}
+  .type div{display:flex;align-items:baseline;gap:14px;padding:5px 0;border-bottom:1px solid var(--line)}
+  .type div small{font-family:var(--mono);color:var(--dim);font-size:11px;min-width:150px}
+  .states{display:flex;flex-direction:column;gap:8px}
+  .states .rowdemo{display:grid;grid-template-columns:130px 1fr;gap:10px;align-items:center;font-size:12px;color:var(--muted)}
+  .states .rowdemo>div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .states .navd{display:flex;align-items:center;gap:8px;height:32px;padding:0 12px;width:150px;font-size:12.5px;color:var(--muted);background:var(--surface);border-bottom:1px solid var(--line)}
+  .states .navd svg{width:16px;height:16px}
+  .states .navd.h{background:var(--surface2)}
+  .states .navd.a{background:var(--accent);color:#fff;font-weight:500}
+  .states .rd{height:24px;background:var(--surface2);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 8px;font-size:12.5px;width:260px;gap:6px}
+  .states .rd.h{background:var(--surface)}
+  .states .rd.s{background:var(--deep);box-shadow:inset 2px 0 0 var(--accent)}
+  .states .rd svg{width:14px;height:14px;color:var(--warm)}
+  .sheet .light{background:#f3f3f1;color:#333;border-radius:8px;padding:12px;font-size:12px}
+  .sheet .light .lb{height:12px;background:#e8e8e6;border:1px solid #cfcfcb;border-radius:3px;position:relative;width:150px;overflow:hidden}
+  .sheet .light .lb i{position:absolute;inset:0;width:61%;background:#e95420}
+  .sheet .light .ln{background:#e95420;color:#fff;padding:6px 12px;width:150px;font-weight:500;font-size:12.5px;margin-top:8px}
+  .sheet .light .lr{background:#fff;border-bottom:1px solid #dcdcd8;padding:4px 8px;width:220px;margin-top:8px}
+  .sheet .light .lr.s{background:#fbe6de;box-shadow:inset 2px 0 0 #e95420}
+  .note{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70ch}
+  /* single-board capture: open the file with #dirA … #sheet to show only that board */
+  body:has(.board:target) .intro,body:has(.board:target) .board:not(:target),body:has(.board:target) .board-head{display:none}
+  body:has(.board:target) .wrap{padding:16px}
+  body:has(.board:target) .board{margin:0}
+  body:has(.board:target) .fit{box-shadow:none;border-radius:0}
+  body:has(.board:target) .sheet{box-shadow:none}
+  @media (max-width:640px){.board-head{grid-template-columns:1fr}.board-head p{grid-column:1}h1{font-size:26px}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-folder" viewBox="0 0 16 16"><path d="M1.5 3.5h4l1.5 1.5h7.5v8h-13z" fill="currentColor" opacity=".9"/></symbol>
+    <symbol id="i-file" viewBox="0 0 16 16"><path d="M4 1.5h5l3 3v10H4z" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M9 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+    <symbol id="i-drive" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 9.5h12" stroke="currentColor" stroke-width="1.3"/><circle cx="11.5" cy="11.5" r=".9" fill="currentColor"/></symbol>
+    <symbol id="i-usb" viewBox="0 0 16 16"><rect x="4" y="5" width="8" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 5V2.5h4V5" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-home" viewBox="0 0 16 16"><path d="M2.5 8 8 3l5.5 5v5.5h-4V10h-3v3.5h-4z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+    <symbol id="i-tree" viewBox="0 0 16 16"><path d="M3 3h4M3 8h6M3 13h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-top" viewBox="0 0 16 16"><path d="M3 12l3-4 3 2 4-6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-types" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="4.5" height="4.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2.5" width="4.5" height="4.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="2.5" y="9" width="4.5" height="4.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="4.5" height="4.5" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-snap" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3.2l2.2 1.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6 11 5M5 11l-1.4 1.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.2 10.2 14 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-play" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z" fill="currentColor"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M13 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 16 16"><path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-link" viewBox="0 0 16 16"><path d="M6.5 9.5 9.5 6.5M7 4.5 8.5 3a2.5 2.5 0 0 1 3.5 3.5L10.5 8M9 11.5 7.5 13A2.5 2.5 0 0 1 4 9.5L5.5 8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+    <symbol id="i-blocks" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 6h12M2 10h12M6 2v12M10 2v12" stroke="currentColor" stroke-width="1" opacity=".7"/></symbol>
+    <symbol id="i-x" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-min" viewBox="0 0 16 16"><path d="M4 8h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-max" viewBox="0 0 16 16"><rect x="4" y="4" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+    <symbol id="i-mark" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="#21252f" stroke-width="8"/><circle cx="32" cy="32" r="26" fill="none" stroke="#e95420" stroke-width="8" stroke-dasharray="118 200" stroke-linecap="round" transform="rotate(-90 32 32)"/><rect x="24" y="26" width="16" height="12" rx="2" fill="#eeeeee"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <div class="intro">
+  <div class="eyebrow">MensuraMedia · lindrivespace · GTK 3 / Python · Linux Mint 22.3</div>
+  <h1><b>LinDriveSpace</b> design directions</h1>
+  <p class="lede">Four directions for the mount, partition, folder and file size explorer, plus the shared component sheet. All four sit on the gray‑temperature surfaces with Ubuntu type and a single Ubuntu‑orange accent; they differ in what the first screen is for and how dense it is. Sample figures come from this machine's real mount layout.</p>
+  <div class="chips">
+    <span class="chip"><b>nvme0n1p2</b> ext4 / 100 GB</span>
+    <span class="chip"><b>nvme0n1p3</b> ext4 /home 1.7 TB</span>
+    <span class="chip"><b>nvme0n1p1</b> vfat /boot/efi 512 MB</span>
+    <span class="chip"><b>sda1</b> ext4 /mnt/data 931.5 GB</span>
+    <span class="chip">10 × squashfs snap loops (hidden)</span>
+  </div>
+  </div>
+
+  <!-- ============ A ============ -->
+  <section class="board" id="dirA">
+    <div class="board-head">
+      <span class="tag">Direction A</span><h2>Classic Tree‑Table</h2>
+      <p><b>Closest to the reference.</b> The Explorer is the whole app: one dense tree‑table with size, allocated, files, folders, percent‑of‑parent bars and modified date, a breadcrumb strip above it and scan progress in the header. Mounts live on a secondary Overview page. Motivation: zero learning curve for TreeSize / WizTree users. Trade‑off: mount health is a page away, and the table is the only visual.</p>
+    </div>
+    <div class="fit"><div class="app" id="appA"></div></div>
+  </section>
+
+  <!-- ============ B ============ -->
+  <section class="board" id="dirB">
+    <div class="board-head">
+      <span class="tag">Direction B</span><h2>Overview Dashboard</h2>
+      <p><b>Mounts first, then drill in.</b> The first screen is a summary: four KPI tiles, then every mount as a card grouped by physical disk with a usage ring, used/free, and a Scan button. Below, the last scans. The tree‑table from Direction A opens on Scan. Motivation: answers "which disk is full?" before any scan runs, and shows hot‑plugged USB drives as they arrive. Trade‑off: two clicks to the tree.</p>
+    </div>
+    <div class="fit"><div class="app" id="appB"></div></div>
+  </section>
+
+  <!-- ============ C ============ -->
+  <section class="board" id="dirC">
+    <div class="board-head">
+      <span class="tag">Direction C</span><h2>Gray‑Temperature Cards</h2>
+      <p><b>The UI‑kit reference, literally.</b> Soft raised cards and sunken wells, a large dial for the selected mount, round mode buttons (allocated vs apparent, hidden files, follow links, cross mounts) and the tree in a recessed well. Motivation: strongest visual identity, matches the kit image. Trade‑off: neumorphic depth costs vertical space and has to be drawn with Cairo, so rows stay flat inside the well.</p>
+    </div>
+    <div class="fit"><div class="app" id="appC"></div></div>
+  </section>
+
+  <!-- ============ D ============ -->
+  <section class="board" id="dirD">
+    <div class="board-head">
+      <span class="tag">Direction D</span><h2>Analyst Split</h2>
+      <p><b>Tree plus insight panel.</b> The tree‑table keeps the left 70 %; a docked panel on the right shows a squarified treemap of the selected row, the largest files inside it, and an age histogram of allocated bytes. Ubuntu Mono carries paths and raw byte values. Motivation: the treemap makes the 80/20 obvious at a glance and the top‑files list is where deletions actually happen. Trade‑off: the tree loses two columns of width at 1200 px; the panel collapses below 1100 px.</p>
+    </div>
+    <div class="fit"><div class="app" id="appD"></div></div>
+  </section>
+
+  <!-- ============ Sheet ============ -->
+  <section class="board" id="sheet">
+    <div class="board-head">
+      <span class="tag">Shared</span><h2>Component sheet</h2>
+      <p>Tokens and states every direction uses. Names match <code style="font-family:var(--mono)">tokens.css</code> in the technical document.</p>
+    </div>
+    <div class="sheet">
+      <div>
+        <h4>Surfaces &amp; text</h4>
+        <div class="sw">
+          <div><i style="background:#495060"></i><b>--bg-canvas</b> #495060</div>
+          <div><i style="background:#343946"></i><b>--bg-surface</b> #343946</div>
+          <div><i style="background:#2d323d"></i><b>--bg-surface-2</b> #2d323d</div>
+          <div><i style="background:#21252f"></i><b>--bg-sunken</b> #21252f</div>
+          <div><i style="background:#1b1e29"></i><b>--bg-deep</b> #1b1e29</div>
+          <div><i style="background:#1c1f28"></i><b>--line</b> #1c1f28</div>
+          <div><i style="background:#eeeeee"></i><b>--fg</b> #eeeeee</div>
+          <div><i style="background:#b9bcc6"></i><b>--fg-muted</b> #b9bcc6</div>
+        </div>
+        <h4 style="margin-top:18px">Accent &amp; semantic</h4>
+        <div class="sw">
+          <div><i style="background:#e95420"></i><b>--accent</b> #e95420</div>
+          <div><i style="background:#fd5c01"></i><b>--accent-hot</b> #fd5c01</div>
+          <div><i style="background:#772953"></i><b>--aubergine</b> #772953</div>
+          <div><i style="background:#aea79f"></i><b>--warm-grey</b> #aea79f</div>
+          <div><i style="background:#3fb950"></i><b>--ok</b> #3fb950</div>
+          <div><i style="background:#f5a623"></i><b>--warn</b> #f5a623 ≥85 %</div>
+          <div><i style="background:#e0362c"></i><b>--danger</b> #e0362c ≥95 %</div>
+        </div>
+      </div>
+      <div>
+        <h4>Type</h4>
+        <div class="type">
+          <div><small>Ubuntu 18pt Medium</small><span style="font-size:18px;font-weight:500">Explorer — /home</span></div>
+          <div><small>Ubuntu 10.5pt Regular</small><span>Videos, Program Files (x86), lost+found</span></div>
+          <div><small>Ubuntu 10.5pt Medium (top‑N)</small><span style="font-weight:500">598.2 GB user</span></div>
+          <div><small>Ubuntu tnum, right</small><span style="font-variant-numeric:tabular-nums">142.8 GB &nbsp; 1,284,301 &nbsp; 96,412</span></div>
+          <div><small>Ubuntu Mono 10pt</small><span style="font-family:var(--mono)">/home/user/.cache/mozilla 153 337 511 872 B</span></div>
+          <div><small>Ubuntu 24pt Light (KPI)</small><span style="font-size:24px;font-weight:300">2.61 TB</span></div>
+          <div><small>Ubuntu 9pt Medium caps</small><span style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">% of parent</span></div>
+        </div>
+      </div>
+      <div>
+        <h4>States</h4>
+        <div class="states">
+          <div class="rowdemo"><span>Nav normal / hover / active</span><div><span class="navd"><svg><use href="#i-tree"/></svg>Explorer</span></div></div>
+          <div class="rowdemo"><span></span><div><span class="navd h"><svg><use href="#i-tree"/></svg>Explorer</span><span class="navd a"><svg><use href="#i-tree"/></svg>Explorer</span></div></div>
+          <div class="rowdemo"><span>Row normal / hover / selected</span><div><span class="rd"><svg><use href="#i-folder"/></svg>Videos</span></div></div>
+          <div class="rowdemo"><span></span><div><span class="rd h"><svg><use href="#i-folder"/></svg>Videos</span></div></div>
+          <div class="rowdemo"><span></span><div><span class="rd s"><svg><use href="#i-folder"/></svg>Videos</span></div></div>
+          <div class="rowdemo"><span>Percent bar 12 × 150</span><div><span class="bar" style="width:150px"><i style="width:82.3%"></i><b>82.3 %</b></span><span class="bar" style="width:150px"><i style="width:6%"></i><b>6.0 %</b></span></div></div>
+          <div class="rowdemo"><span>Denied subtree</span><div><span class="rd"><svg style="color:var(--danger)"><use href="#i-lock"/></svg>docker <span style="color:var(--dim);font-size:11px;margin-left:auto">re‑scan as admin</span></span></div></div>
+          <div class="rowdemo"><span>Buttons</span><div><span class="btn primary"><svg><use href="#i-play"/></svg>Scan</span><span class="btn">Export CSV</span><span class="btn ghost">Cancel</span></div></div>
+        </div>
+      </div>
+      <div>
+        <h4>Light variant (v1 or v1.1)</h4>
+        <div class="light">
+          <div style="font-family:var(--mono);font-size:11px;color:#777">#f3f3f1 / #ffffff / #e8e8e6 · text #333333</div>
+          <div class="lb" style="margin-top:8px"><i></i></div>
+          <div class="ln">Explorer</div>
+          <div class="lr">Videos</div>
+          <div class="lr s">Videos</div>
+        </div>
+        <p class="note">Same accent set; selected row tint is the accent at 12 % over white.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  const $ = (s,el=document)=>el.querySelector(s);
+  const ico = n => `<svg><use href="#${n}"/></svg>`;
+  const fmt = n => n.toLocaleString('en-US');
+
+  /* ---- sample data: /home on nvme0n1p3 ---- */
+  const home = {n:'/home  on nvme0n1p3  [ext4]',root:true,size:612.4,alloc:614.9,f:1294612,d:97211,mod:'2026-09-14',open:true,kids:[
+    {n:'user',size:598.2,alloc:601.3,f:1284301,d:96412,mod:'2026-09-14',open:true,bold:true,kids:[
+      {n:'Videos',size:188.3,alloc:188.4,f:1206,d:42,mod:'2026-08-30',bold:true},
+      {n:'.cache',size:142.8,alloc:151.2,f:418220,d:31007,mod:'2026-09-14',bold:true,open:true,kids:[
+        {n:'mozilla',size:61.9,alloc:63.4,f:152883,d:9012,mod:'2026-09-14',bold:true},
+        {n:'pip',size:28.4,alloc:29.0,f:44120,d:6203,mod:'2026-09-02'},
+        {n:'thumbnails',size:19.7,alloc:21.9,f:188430,d:6,mod:'2026-09-13'},
+        {n:'yay',size:14.2,alloc:14.3,f:8021,d:1140,mod:'2026-07-19'},
+        {n:'JetBrains',size:9.1,alloc:9.6,f:19340,d:12920,mod:'2026-09-11'},
+        {n:'fontconfig',size:0.3,alloc:0.4,f:611,d:1,mod:'2026-09-14',muted:true}
+      ]},
+      {n:'projects',size:96.1,alloc:97.0,f:611880,d:41205,mod:'2026-09-14',bold:true},
+      {n:'.local',size:61.4,alloc:62.2,f:180914,d:12210,mod:'2026-09-14'},
+      {n:'Downloads',size:44.9,alloc:44.9,f:2310,d:88,mod:'2026-09-12'},
+      {n:'snap',size:38.7,alloc:39.1,f:52290,d:5011,mod:'2026-09-10'},
+      {n:'.var',size:12.6,alloc:12.8,f:31118,d:3390,mod:'2026-09-09'},
+      {n:'Pictures',size:9.8,alloc:9.8,f:4410,d:61,mod:'2026-06-21'},
+      {n:'Documents',size:3.1,alloc:3.2,f:2790,d:212,mod:'2026-09-08'},
+      {n:'.config',size:0.9,alloc:1.1,f:11860,d:2101,mod:'2026-09-14',muted:true}
+    ]},
+    {n:'docker',size:14.2,alloc:13.6,f:0,d:0,mod:'2026-09-01',denied:true},
+    {n:'lost+found',size:0,alloc:0,f:0,d:0,mod:'2025-03-02',muted:true}
+  ]};
+
+  const gb = v => v>=1000 ? (v/1000).toFixed(2)+' TB' : v>=1 ? v.toFixed(1)+' GB' : v>0 ? Math.round(v*1000)+' MB' : '0 Bytes';
+
+  function treeHtml(node, opts={}){
+    const cols = opts.owner ? 'tt wide' : opts.compact ? 'tt compact' : 'tt';
+    let h = `<div class="${cols}">
+      <div class="h">Name</div><div class="h r">Size</div><div class="h r">Allocated <span class="sort">▼</span></div>${opts.compact?'':'<div class="h r">Files</div><div class="h r">Folders</div>'}<div class="h">% of Parent (Allocated)</div><div class="h">Modified</div>${opts.owner?'<div class="h">Owner</div>':''}`;
+    let i=0;
+    const walk=(nd,depth,parent)=>{
+      const pct = parent ? (nd.alloc/parent.alloc*100) : 100;
+      const cls = ['rowgrp', nd.bold?'bold':'', nd.muted?'muted':'', (opts.sel===nd.n)?'sel':'', (opts.hover===nd.n)?'row-hover':''].join(' ');
+      const arrow = nd.kids ? (nd.open?'⌄':'›') : (nd.denied?'':'');
+      const icon = nd.denied ? `<svg class="lock"><use href="#i-lock"/></svg>` : nd.root ? `<svg style="color:var(--muted)"><use href="#i-drive"/></svg>` : ico('i-folder');
+      h += `<div class="${cls}">
+        <div class="c name" style="padding-left:${8+depth*16}px"><span class="arrow">${arrow}</span>${icon}<span class="sz">${gb(nd.alloc)}</span><span>${nd.n}</span></div>
+        <div class="c r">${gb(nd.size)}</div><div class="c r">${gb(nd.alloc)}</div>
+        ${opts.compact?'':`<div class="c r">${nd.denied?'—':fmt(nd.f)}</div><div class="c r">${nd.denied?'—':fmt(nd.d)}</div>`}
+        <div class="c"><span class="bar"><i style="width:${pct.toFixed(1)}%"></i><b>${pct.toFixed(1)} %</b></span></div>
+        <div class="c">${nd.mod}</div>${opts.owner?`<div class="c" style="color:var(--muted)">${nd.root?'root':nd.n==='docker'?'root':'user'}</div>`:''}
+      </div>`;
+      if(nd.kids && nd.open) nd.kids.forEach(k=>walk(k,depth+1,nd));
+    };
+    walk(node,0,null);
+    return h+'</div>';
+  }
+
+  function nav(active){
+    const items=[['overview','i-home','Overview'],['explorer','i-tree','Explorer'],['top','i-top','Top Files'],['types','i-types','File Types'],['snap','i-snap','Snapshots']];
+    return `<aside class="sb"><div class="logo"><svg class="mark"><use href="#i-mark"/></svg><div class="name">LinDriveSpace</div></div>
+      <nav class="nav">${items.map(([id,ic,l])=>`<a class="${id===active?'active':''}">${ico(ic)}${l}</a>`).join('')}<span class="spacer"></span><a class="bottom ${active==='settings'?'active':''}">${ico('i-gear')}Settings</a></nav></aside>`;
+  }
+  function header(title, sub, mid){
+    return `<div class="hb"><span class="title">${title}</span><span class="sub">${sub}</span><span class="grow"></span>${mid||''}<span class="grow"></span>
+      <span class="wc">${ico('i-min')}${ico('i-max')}${ico('i-x')}</span></div>`;
+  }
+  const progress = `<span class="pill"><span class="stop"></span>Scanning /home · 812,406 entries · 63 %<span class="p"><i></i></span></span>`;
+  const searchBox = `<span class="search">${ico('i-search')}Filter names…</span>`;
+
+  function ring(pct, size=64, stroke=8, color){
+    const r=(size-stroke)/2, c=2*Math.PI*r;
+    const col = color || (pct>=95?'var(--danger)':pct>=85?'var(--warn)':'var(--accent)');
+    return `<svg class="ring" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--sunken)" stroke-width="${stroke}"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${(c*pct/100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/>
+      <text x="50%" y="53%" text-anchor="middle" dominant-baseline="middle" fill="var(--fg)" font-family="Ubuntu,sans-serif" font-size="${size*0.22}" font-weight="500">${pct}%</text></svg>`;
+  }
+
+  /* ---- A ---- */
+  $('#appA').innerHTML = header('LinDriveSpace','Explorer', progress) + nav('explorer') + `
+    <div class="content">
+      <div class="crumbs">${ico('i-drive')}<b>/home</b><span class="sep">›</span><b>user</b><span class="sep">›</span><b>.cache</b>
+        <span class="kv"><span>allocated <em>614.9 GB</em></span><span>free <em>1.09 TB</em></span><span>entries <em>1,391,823</em></span></span>
+        <span class="hbtn" style="margin-left:14px">${ico('i-blocks')}Allocated</span><span class="hbtn">${ico('i-eye')}Hidden</span></div>
+      <div class="scroll">${treeHtml(home,{sel:'.cache',hover:'mozilla'})}</div>
+      <div class="statusbar"><span>nvme0n1p3 · ext4 · 1.7 TB</span><span>hard links counted once</span><span>3 denied · re‑scan as admin</span><span class="grow"></span><span>selected: 151.2 GB in 449,227 entries</span></div>
+    </div>`;
+
+  /* ---- B ---- */
+  const mounts = [
+    {disk:'nvme0n1 · Samsung SSD 990 PRO 2TB · NVMe',items:[
+      {n:'/',dev:'nvme0n1p2 · ext4',used:71.4,tot:98.3,pct:73,ic:'i-drive'},
+      {n:'/home',dev:'nvme0n1p3 · ext4',used:614.9,tot:1700,pct:36,ic:'i-home',sel:true,scan:'2026‑09‑14 18:41'},
+      {n:'/boot/efi',dev:'nvme0n1p1 · vfat',used:0.0091,tot:0.511,pct:2,ic:'i-drive'}]},
+    {disk:'sda · WDC WD10EZEX · SATA · rotational',items:[
+      {n:'/mnt/data',dev:'sda1 · ext4',used:882.1,tot:915.7,pct:96,ic:'i-drive',scan:'2026‑09‑12 09:12'}]},
+    {disk:'sdb · SanDisk Ultra · USB 3 · just attached',items:[
+      {n:'/media/user/BACKUP',dev:'sdb1 · exfat',used:52.3,tot:60.1,pct:87,ic:'i-usb'}]}
+  ];
+  const card = m => `<div class="mc ${m.sel?'sel':''}">${ring(m.pct)}
+    <div class="n">${ico(m.ic)}${m.n}</div><div class="d">${m.dev}</div>
+    <div class="u">${gb(m.used)} used <span>·</span> ${gb(m.tot-m.used)} free <span>of ${gb(m.tot)}</span></div>
+    <div class="d" style="font-size:11px">${m.scan?'scanned '+m.scan:'not scanned'}</div>
+    <span class="act btn ${m.sel?'primary':''}">${ico(m.scan?'i-refresh':'i-play')}${m.scan?'Rescan':'Scan'}</span></div>`;
+  $('#appB').innerHTML = header('LinDriveSpace','Overview', searchBox) + nav('overview') + `
+    <div class="content"><div class="page">
+      <div><h3>Mounted filesystems</h3><div class="sub">5 mounts on 3 disks · 10 snap loops and tmpfs hidden · udev monitor live</div></div>
+      <div class="kpis">
+        <div class="kpi"><div class="l">Total capacity</div><div class="v">2.77<small>TB</small></div><div class="t">across 5 mounts</div></div>
+        <div class="kpi"><div class="l">Used</div><div class="v">1.62<small>TB</small></div><div class="t">58 % · +21.4 GB this week</div></div>
+        <div class="kpi"><div class="l">Free</div><div class="v">1.15<small>TB</small></div><div class="t">/mnt/data at 96 % — needs attention</div></div>
+        <div class="kpi"><div class="l">Scanned</div><div class="v">2<small>of 5</small></div><div class="t">last: /home · 2026‑09‑14 18:41</div></div>
+      </div>
+      ${mounts.map(g=>`<div class="grp"><div class="gh"><b>${g.disk.split(' · ')[0]}</b><span class="meta">${g.disk.split(' · ').slice(1).join(' · ')}</span></div><div class="cards">${g.items.map(card).join('')}</div></div>`).join('')}
+      <div class="list"><div class="lh"><span>Recent scans</span><span class="r">Allocated</span><span class="r">Entries</span><span class="r">Duration</span><span class="r">When</span></div>
+        <div class="lr"><span>/home <span class="m">nvme0n1p3</span></span><span class="r">614.9 GB</span><span class="r">1,391,823</span><span class="r m">41 s</span><span class="r m">2026‑09‑14</span></div>
+        <div class="lr"><span>/mnt/data <span class="m">sda1</span></span><span class="r">882.1 GB</span><span class="r">218,440</span><span class="r m">3 m 12 s</span><span class="r m">2026‑09‑12</span></div></div>
+    </div></div>`;
+
+  /* ---- C ---- */
+  const modeBtn=(ic,l,on)=>`<div style="display:flex;align-items:center;gap:12px"><span class="cbtn ${on?'on':''}">${ico(ic)}</span><span style="font-size:13px;font-weight:500">${l}<div style="font-size:11px;color:var(--dim);font-weight:400">${on?'on':'off'}</div></span></div>`;
+  $('#appC').innerHTML = header('LinDriveSpace','Explorer', progress) + nav('explorer') + `
+    <div class="content" style="background:var(--surface);padding:18px;gap:18px;display:grid;grid-template-columns:250px 1fr;grid-template-rows:1fr;overflow:hidden">
+      <div class="neu" style="padding:18px;display:flex;flex-direction:column;gap:18px;align-items:center">
+        <div style="align-self:stretch"><div style="font-size:16px;font-weight:500">/home</div><div style="font-family:var(--mono);font-size:11.5px;color:var(--muted)">nvme0n1p3 · ext4 · 1.7 TB</div></div>
+        <div class="neu-in" style="width:180px;height:180px;border-radius:50%;display:flex;align-items:center;justify-content:center">${ring(36,150,10)}</div>
+        <div style="text-align:center"><div style="font-size:22px;font-weight:300">614.9 GB</div><div style="font-size:11.5px;color:var(--muted)">allocated · 1.09 TB free</div></div>
+        <div style="display:flex;flex-direction:column;gap:14px;align-self:stretch;margin-top:4px">
+          ${modeBtn('i-blocks','Allocated size',true)}${modeBtn('i-eye','Hidden files',true)}${modeBtn('i-link','Follow symlinks',false)}${modeBtn('i-drive','Cross mounts',false)}
+        </div>
+        <span class="btn primary" style="margin-top:auto;align-self:stretch;justify-content:center;padding:8px">${ico('i-refresh')}Rescan</span>
+      </div>
+      <div class="neu-in" style="display:flex;flex-direction:column;overflow:hidden;min-width:0">
+        <div class="crumbs" style="background:transparent">${ico('i-drive')}<b>/home</b><span class="sep">›</span><b>user</b><span class="kv"><span>entries <em>1,391,823</em></span><span>denied <em>3</em></span></span></div>
+        <div class="scroll" style="padding:0 6px 6px">${treeHtml({...home,kids:[{...home.kids[0],kids:home.kids[0].kids.map(k=>({...k,open:false}))},home.kids[1],home.kids[2]]},{sel:'projects',compact:true})}</div>
+      </div>
+    </div>`;
+
+  /* ---- D ---- */
+  function squarify(items, x, y, w, h){
+    const total = items.reduce((a,b)=>a+b.v,0); const out=[]; let rest=[...items].sort((a,b)=>b.v-a.v);
+    let cx=x,cy=y,cw=w,ch=h;
+    while(rest.length){
+      const horiz = cw >= ch; const side = horiz?ch:cw; let row=[]; let best=Infinity;
+      const area = it=>it.v/total*w*h;
+      for(let i=0;i<rest.length;i++){
+        const cand=[...row,rest[i]]; const s=cand.reduce((a,b)=>a+area(b),0); const len=s/side;
+        const ratio=Math.max(...cand.map(it=>{const l=area(it)/len;return Math.max(len/l,l/len);}));
+        if(ratio<=best){row=cand;best=ratio;}else break;
+      }
+      rest=rest.slice(row.length);
+      const s=row.reduce((a,b)=>a+area(b),0); const len=s/side; let off=0;
+      row.forEach(it=>{const l=area(it)/len;
+        out.push(horiz?{it,x:cx,y:cy+off,w:len,h:l}:{it,x:cx+off,y:cy,w:l,h:len}); off+=l;});
+      if(horiz){cx+=len;cw-=len;}else{cy+=len;ch-=len;}
+    }
+    return out;
+  }
+  const tmItems = home.kids[0].kids.map((k,i)=>({n:k.n,v:k.alloc,c:i===0?'var(--accent)':i===1?'var(--hot)':i<4?'#b8451e':i<7?'#8a3e2a':'var(--warm)'}));
+  const tmRects = squarify(tmItems,0,0,348,230).map(r=>`<div style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${r.it.c}">${r.w>46&&r.h>16?r.it.n:''}${r.w>60&&r.h>30?`<small>${gb(r.it.v)}</small>`:''}</div>`).join('');
+  const topFiles=[['Videos/raw/','2026-04-workshop.mkv',48.2],['Videos/raw/','drone-b-roll-4k.mov',31.7],['.cache/mozilla/','cache2/entries',14.9],['Downloads/','ubuntu-24.04.3.iso',6.1],['projects/ml/','checkpoint-1200.safetensors',5.4],['snap/firefox/','common/…/places.sqlite',2.2]];
+  $('#appD').innerHTML = header('LinDriveSpace','Explorer', searchBox) + nav('explorer') + `
+    <div class="content"><div class="split">
+      <div style="display:flex;flex-direction:column;min-width:0">
+        <div class="crumbs">${ico('i-drive')}<b>/home</b><span class="sep">›</span><b>user</b><span class="kv"><span>allocated <em>601.3 GB</em></span><span>97.7 % of /home</span></span></div>
+        <div class="scroll">${treeHtml({...home,kids:[{...home.kids[0],kids:home.kids[0].kids.map(k=>({...k,open:false}))},home.kids[1],home.kids[2]]},{sel:'user',compact:true})}</div>
+        <div class="statusbar"><span>1,391,823 entries</span><span>41 s</span><span class="grow"></span><span style="font-family:var(--mono)">601 302 748 160 B</span></div>
+      </div>
+      <div class="panel">
+        <div class="tabs"><span class="on">Treemap</span><span>Top files</span><span>Types</span><span>Age</span></div>
+        <div class="ph" style="padding-top:12px">user <span>10 folders · 601.3 GB</span></div>
+        <div class="tm">${tmRects}</div>
+        <div class="ph">Largest files in user <span>of 1,284,301</span></div>
+        <div class="files">${topFiles.map(f=>`<div class="f"><span class="p">${f[0]}<b>${f[1]}</b></span><span class="s">${gb(f[2])}</span><span class="w"><i style="width:${(f[2]/48.2*100).toFixed(0)}%"></i></span></div>`).join('')}</div>
+        <div class="ph">Allocated by last modified <span>GB</span></div>
+        <div class="age"><div class="hot" style="height:62%"><span>7 d</span></div><div style="height:38%"><span>30 d</span></div><div style="height:74%"><span>90 d</span></div><div style="height:100%"><span>1 y</span></div><div style="height:45%"><span>older</span></div></div>
+      </div>
+    </div></div>`;
+
+  /* ---- fit boards to width ---- */
+  function fit(){
+    document.querySelectorAll('.fit').forEach(f=>{
+      const app=f.firstElementChild; const s=Math.min(1,f.clientWidth/1180);
+      app.style.transform=`scale(${s})`; f.style.height=(720*s)+'px';
+    });
+  }
+  fit(); addEventListener('resize',fit);
+})();
+</script>

@@ -1,0 +1,5 @@
+This Project Repo: https://github.com/MensuraMedia/lindrivespace
+
+Dashboard Template: https://github.com/mikesdatawork/gtk-python-dashboard-starter
+
+Design and Build Principles: https://github.com/MensuraMedia/universal-instruction-set
