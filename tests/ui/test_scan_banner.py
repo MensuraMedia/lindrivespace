@@ -87,3 +87,27 @@ def test_banner_stop_cancels(window, tmp_path: Path) -> None:  # type: ignore[no
     _pump(lambda: registry.active is None, timeout=30.0)
     assert registry.get(str(root)).state in ("cancelled", STATE_DONE)
     assert not banner.get_visible()
+
+
+def test_scan_persists_across_pages(window, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """Leaving the Overview mid-scan and coming back still shows the running scan."""
+    root = tmp_path / "persistroot"
+    root.mkdir()
+    for i in range(6000):
+        (root / f"f{i}").write_bytes(b"p")
+    registry = window.app.scan_registry
+    banner = window.scan_banner
+    window.show_page("overview")
+    registry.request(str(root))
+    _pump(lambda: banner.get_visible(), timeout=10.0)
+    for page_id in ("settings", "favorites", "explorer", "snapshots"):
+        window.show_page(page_id)
+        _pump(lambda: True, timeout=0.05)
+        assert banner.get_visible(), f"banner hidden on {page_id}"
+        assert registry.active == str(root)
+    window.show_page("overview")
+    _pump(lambda: True, timeout=0.05)
+    assert banner.get_visible()
+    assert registry.get(str(root)).state in ("scanning", "done")
+    _pump(lambda: registry.active is None, timeout=60.0)
+    assert not banner.get_visible()
