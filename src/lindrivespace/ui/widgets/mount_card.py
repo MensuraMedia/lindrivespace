@@ -17,8 +17,9 @@ from dataclasses import dataclass
 import gi
 
 gi.require_version("Gtk", "3.0")
+gi.require_version("Pango", "1.0")
 gi.require_version("GLib", "2.0")
-from gi.repository import GLib, GObject, Gtk  # noqa: E402
+from gi.repository import GLib, GObject, Gtk, Pango  # noqa: E402
 
 from lindrivespace.config.layout import Layout  # noqa: E402
 from lindrivespace.config.theme import ThemeDefinition  # noqa: E402
@@ -68,7 +69,7 @@ def _usage_text(data: MountCardData) -> str:
 
 def _scanned_text(data: MountCardData) -> str:
     if data.scan_state == "scanning":
-        return f"Scanning… {data.scan_detail}".rstrip()
+        return "scanning…"
     if data.scan_state == "queued":
         return "queued for scan"
     if data.scan_state == "cancelled":
@@ -94,6 +95,7 @@ class MountCard(Gtk.Frame):
         self.set_shadow_type(Gtk.ShadowType.NONE)
         self.get_style_context().add_class("card")
         self.set_size_request(_DIMS.CARD_WIDTH, _DIMS.CARD_HEIGHT)
+        self.set_size_request(_DIMS.CARD_WIDTH, _DIMS.CARD_HEIGHT)
 
         self._theme = theme
         self._data = data
@@ -116,6 +118,7 @@ class MountCard(Gtk.Frame):
         name_row.pack_start(self.icon, False, False, 0)
         self.name_label = Gtk.Label()
         self.name_label.set_xalign(0.0)
+        self.name_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
         name_row.pack_start(self.name_label, True, True, 0)
         self.role_label = Gtk.Label()
         self.role_label.get_style_context().add_class("badge")
@@ -132,7 +135,7 @@ class MountCard(Gtk.Frame):
 
         self.usage_label = Gtk.Label()
         self.usage_label.set_xalign(0.0)
-        self.usage_label.set_line_wrap(True)
+        self.usage_label.set_ellipsize(Pango.EllipsizeMode.END)  # one line; never grows the card
         body.pack_start(self.usage_label, False, False, 0)
 
         # Usage bar (replaces the ring gauge; same colour thresholds).
@@ -149,6 +152,7 @@ class MountCard(Gtk.Frame):
         bottom_row.pack_start(self.spinner, False, False, 0)
         self.scanned_label = Gtk.Label()
         self.scanned_label.set_xalign(0.0)
+        self.scanned_label.set_ellipsize(Pango.EllipsizeMode.END)
         self.scanned_label.get_style_context().add_class("dim")
         bottom_row.pack_start(self.scanned_label, True, True, 0)
 

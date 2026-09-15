@@ -258,11 +258,7 @@ class OverviewPage(BasePage):
         if entry is None:
             return data
         if entry.state == "scanning":
-            if entry.expected_bytes:
-                pct = min(99, int(entry.alloc * 100 / entry.expected_bytes))
-                detail = f"{pct} % · {self.app.format_bytes(entry.alloc)}"
-            else:
-                detail = self.app.format_bytes(entry.alloc) if entry.alloc else ""
+            detail = ""  # progress is shown only in the scan strip at the top of the page
         elif entry.state == "done":
             detail = self.app.format_bytes(entry.alloc) if entry.alloc else ""
         else:
@@ -286,16 +282,6 @@ class OverviewPage(BasePage):
     def _build_card(self, mount: MountInfo) -> MountCard:
         data = self._card_data(mount)
         card = MountCard(self.theme, data)
-        # MountCard's usage line wraps (Gtk.Label.set_line_wrap) but a
-        # wrapping label's *natural* width request is still its full
-        # unwrapped text -- GTK only shrinks it once allocated less than
-        # that, which FlowBox's own "how many columns fit" measurement never
-        # does. Capping the char width here (a public MountCard attribute,
-        # see .claude/memory/changes/2026-09-14-wp5-widgets.md) keeps a
-        # card's natural width close to CARD_WIDTH so three fit per row at
-        # the default window width, matching the Direction B mockup, instead
-        # of FlowBox dropping to two wide columns. Not a mount_card.py edit.
-        card.usage_label.set_max_width_chars(20)
         card.set_role(self.mount_roles().get(mount.mountpoint))
         card.connect("scan-requested", self._on_card_scan_requested)
         card.connect(
