@@ -44,7 +44,7 @@ Sidebar: **Overview · Explorer · Favorites · History · Hardware · Glossary 
 | Settings | done | Theme (light = preview), units, primary size, scan defaults, exclusions, background collection (scheduler), hidden fstypes, primary/secondary mountpoints, explorer bold-N / reset columns, auto-scan on startup, Diagnostics (log folder + level, open log), About. |
 | Logging & errors | done | `lindrivespace/logsetup.py`: rotating log `~/.cache/lindrivespace/logs/lindrivespace.log` (1 MB × 5), main/thread/GTK-callback exception hooks, GLib warning capture, `--debug`; in-window error bar with Details and Open log. |
 | Privileged scan helper | built, not wired | `services/privilege.py`, `data/bin/lindrivespace-scan-helper`, polkit policy exist and are tested; the context-menu item still prints a TODO. |
-| Packaging | not started | WP13: `debian/`, desktop entry, AppStream metainfo, LICENSE. `run.sh` from a checkout is the only launch path. |
+| Packaging | done (v0.1) | `bin/lindrivespace` launcher (checkout or installed), `scripts/install.sh` / `uninstall.sh` (user `~/.local` or `--system /usr/local`), `scripts/build-deb.sh` → `dist/lindrivespace_<ver>_all.deb` (dpkg-deb only; /usr/lib/lindrivespace + /usr/share/lindrivespace + polkit helper), desktop entry + AppStream metainfo (both validate), hicolor icon set 16–512 px + SVG. LICENSE still missing. |
 
 ## 3. How to run and verify
 
@@ -111,7 +111,7 @@ GtkTreeStore); everything displayed is formatted at draw time.
 1. `sudo apt install jq` — the universal hooks (security gate, session context) need `jq`; until then they exit non-blocking.
 2. No LICENSE file (README inherits the starter's "free for personal and educational use").
 3. "Scan as administrator" context-menu action is not yet wired to `services/privilege.py`.
-4. WP13 packaging (`debian/`, desktop entry, AppStream, README screenshots of the real app).
+4. Packaging follow-ups: LICENSE file; optional `debian/` source package (dh-python) for a PPA; the .deb is built with plain `dpkg-deb` today.
 5. Light theme is a preview (tokens only, contrast-audited).
 6. Bind mounts of the same device are listed but not scanned separately; btrfs/zfs allocated ≠ fs usage (documented in the glossary).
 7. Page gutters: every `BasePage` paints its own 24 px gutter as CSS padding (`.page.page-padded`); never reintroduce widget margins on pages or GdkWindow background hacks (both produced black bands on resize).

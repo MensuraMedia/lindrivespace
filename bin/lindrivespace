@@ -1,0 +1,25 @@
+#!/bin/sh
+# LinDriveSpace launcher. Works from a checkout (bin/ next to src/ and data/) and from an
+# installed tree (the installer rewrites LINDRIVESPACE_ROOT below). Arguments pass through:
+#   lindrivespace                open the Overview
+#   lindrivespace /mnt/data      open and scan a folder
+#   lindrivespace --collect      headless background collector (used by the scheduler)
+INSTALL_ROOT="__ROOT__"   # the installer / package builder substitutes an absolute path here
+case "${LINDRIVESPACE_ROOT:-$INSTALL_ROOT}" in
+    /*) LINDRIVESPACE_ROOT="${LINDRIVESPACE_ROOT:-$INSTALL_ROOT}" ;;
+    *)
+    # not installed: resolve the checkout relative to this script (symlinks allowed)
+    self="$0"
+    while [ -L "$self" ]; do
+        link="$(readlink "$self")"
+        case "$link" in /*) self="$link" ;; *) self="$(dirname "$self")/$link" ;; esac
+    done
+    LINDRIVESPACE_ROOT="$(cd "$(dirname "$self")/.." && pwd)" ;;
+esac
+if ! python3 -c "import gi; gi.require_version('Gtk', '3.0'); from gi.repository import Gtk" 2>/dev/null; then
+    echo "LinDriveSpace needs PyGObject / GTK 3. Install with:" >&2
+    echo "  sudo apt install python3-gi gir1.2-gtk-3.0 python3-cairo python3-psutil python3-pyudev fonts-ubuntu" >&2
+    exit 1
+fi
+export LINDRIVESPACE_DATA_DIR="${LINDRIVESPACE_DATA_DIR:-$LINDRIVESPACE_ROOT/data}"
+PYTHONPATH="$LINDRIVESPACE_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m lindrivespace "$@"

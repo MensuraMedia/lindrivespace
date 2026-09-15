@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.mensuramedia.lindrivespace</id>
+  <name>LinDriveSpace</name>
+  <summary>See where your disk space goes</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <developer id="com.mensuramedia"><name>MensuraMedia</name></developer>
+  <description>
+    <p>LinDriveSpace is a native GTK 3 disk-space explorer for Linux Mint and other Debian-family desktops. It lists every mount and partition, scans them in the background, and lets you drill from folders down to files with apparent and allocated sizes, counts, share bars and last-modified dates.</p>
+    <p>An Analysis panel adds a treemap, largest files, file types and an age histogram. History records usage automatically, charts it by day, week, month or year, and shows exactly which folders and files grew or shrank between scans. A background collector can run on a schedule, and a Hardware page describes the disks and controllers without root.</p>
+  </description>
+  <launchable type="desktop-id">com.mensuramedia.lindrivespace.desktop</launchable>
+  <url type="homepage">https://github.com/MensuraMedia/lindrivespace</url>
+  <url type="bugtracker">https://github.com/MensuraMedia/lindrivespace/issues</url>
+  <categories><category>System</category><category>Utility</category></categories>
+  <keywords><keyword>disk</keyword><keyword>space</keyword><keyword>storage</keyword><keyword>treesize</keyword></keywords>
+  <content_rating type="oars-1.1"/>
+  <provides><binary>lindrivespace</binary></provides>
+  <screenshots>
+    <screenshot type="default"><caption>Overview of mounts and partitions</caption><image>https://raw.githubusercontent.com/MensuraMedia/lindrivespace/main/docs/screenshots/overview.png</image></screenshot>
+    <screenshot><caption>Explorer with the Analysis panel</caption><image>https://raw.githubusercontent.com/MensuraMedia/lindrivespace/main/docs/screenshots/analysis.png</image></screenshot>
+    <screenshot><caption>History with folder and file changes</caption><image>https://raw.githubusercontent.com/MensuraMedia/lindrivespace/main/docs/screenshots/history.png</image></screenshot>
+  </screenshots>
+  <releases>
+    <release version="0.1.0" date="2026-09-15"><description><p>First packaged release.</p></description></release>
+  </releases>
+</component>

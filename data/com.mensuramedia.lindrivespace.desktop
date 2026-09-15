@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=LinDriveSpace
+GenericName=Disk Space Explorer
+Comment=See where your disk space goes: mounts, folders and files with sizes, trends and history
+Exec=lindrivespace %F
+TryExec=lindrivespace
+Icon=com.mensuramedia.lindrivespace
+Terminal=false
+Categories=System;Filesystem;GTK;
+Keywords=disk;space;usage;storage;drive;mount;partition;folder;size;treesize;
+StartupNotify=true
+StartupWMClass=lindrivespace
+MimeType=inode/directory;

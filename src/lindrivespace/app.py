@@ -35,7 +35,9 @@ DATA_DIR = PROJECT_ROOT / "data"
 
 def data_path(*parts: str) -> Path:
     """Locate a file under data/ (checkout) or the installed share directory."""
+    override = os.environ.get("LINDRIVESPACE_DATA_DIR")  # set by the launcher / installer
     candidates = [
+        *([Path(override).joinpath(*parts)] if override else []),
         DATA_DIR.joinpath(*parts),
         Path("/usr/share/lindrivespace").joinpath(*parts),
         Path("/usr/local/share/lindrivespace").joinpath(*parts),

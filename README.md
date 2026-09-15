@@ -4,7 +4,7 @@
 See every mount and partition at a glance, then drill into folders and files to find out exactly
 what is eating your disk — TreeSize / WizTree style, with Linux-correct numbers.
 
-![Overview](docs/mockups/images/overview.png)
+![Overview](docs/screenshots/overview.png)
 
 > Status: **in build** (2026-09). Concept, technical design and mockups are complete and approved;
 > the code is being built work-package by work-package. See [Roadmap](#roadmap).
@@ -87,36 +87,45 @@ Ubuntu's typeface and colour language.
 
 ## Screens
 
-The renders below are the approved design reference. They are static HTML mockups
-(`docs/mockups/lindrivespace-mockups.html`), captured at the app's default 1180 × 720 window,
-using this machine's real mount layout as sample data. The build follows them screen for screen.
+Real screenshots of the application (1200 × 800, this machine's mounts, after the startup scan).
+The approved design mockups they were built from are in `docs/mockups/` (HTML plus PNG renders).
 
 ### Overview
-The first screen. KPI tiles, every mount as a flat card grouped by physical disk, recent scans.
+KPI tiles and one row per mount grouped by disk: device, type, used/free/total, an inline Used %
+bar, a star for Favorites and Scan/Rescan. Columns can be reordered, resized and hidden.
 
-![Overview](docs/mockups/images/overview.png)
+![Overview](docs/screenshots/overview.png)
 
 ### Explorer
-The tree-table: Name · Size · Allocated · Files · Folders · % of Parent · Modified. Columns can be
-dragged into any order, resized, sorted by clicking their header, and shown or hidden from the
-header's context menu; the layout is remembered.
+The tree-table: Name · Size · Allocated · Files · Folders · Share % · Modified, filling
+progressively while the scan runs. Drag, resize, sort or hide columns from the header menu.
 
-![Explorer](docs/mockups/images/explorer.png)
+![Explorer](docs/screenshots/explorer.png)
 
 ### Analysis
-The Explorer with its insight panel open on the right: treemap, largest files, file types and an
-age histogram for the selected folder. The panel collapses with the toolbar button or F9.
+The Explorer with its insight panel open: treemap, largest files, file types and an age histogram
+for the selected folder. The panel collapses with the toolbar button or F9.
 
-![Analysis](docs/mockups/images/analysis.png)
+![Analysis](docs/screenshots/analysis.png)
 
-### Favorites
-Star any folder or file from the Explorer (context menu or Ctrl+D). The Favorites page lists them;
-clicking one opens the Explorer scanning just that item, with the insight panel ready.
+### History
+Automatic usage trend per mount (Day / Week / Month / Year / All), First / Latest / Change /
+Growth-per-day tiles, and — after clicking **Change** — the folders and files that grew (red) or
+shrank (green) between two scans. Pattern History keeps named views.
 
-### Component sheet
-Tokens, type ramp and widget states shared by every screen. Names match `config/theme.py`.
+![History](docs/screenshots/history.png)
 
-![Component sheet](docs/mockups/images/component-sheet.png)
+### Hardware
+Disks and live I/O first, then system, board, CPU/memory, storage controllers, drive types and
+filesystems — all without root. Every card copies as text.
+
+![Hardware](docs/screenshots/hardware.png)
+
+### Glossary and Settings
+
+![Glossary](docs/screenshots/glossary.png)
+
+![Settings](docs/screenshots/settings.png)
 
 ## Design language
 
@@ -171,16 +180,33 @@ The full design is in [docs/CONCEPT-AND-TECHNICAL-DESIGN.md](docs/CONCEPT-AND-TE
 
 ## Install and run
 
+**Debian package** (Linux Mint, Ubuntu, Debian) — installs the program, the `lindrivespace`
+command, the menu entry (System › LinDriveSpace), icons, AppStream metadata and the polkit policy:
+
 ```bash
-git clone https://github.com/MensuraMedia/lindrivespace.git
-cd lindrivespace
-sudo apt install python3-gi gir1.2-gtk-3.0 python3-cairo python3-psutil python3-pyudev fonts-ubuntu
-./run.sh                 # system Python + system PyGObject; no virtualenv needed
+git clone https://github.com/MensuraMedia/lindrivespace.git && cd lindrivespace
+scripts/build-deb.sh                       # → dist/lindrivespace_0.1.0_all.deb
+sudo apt install ./dist/lindrivespace_0.1.0_all.deb
+```
+
+**Installer script** (no packaging tools; dependencies must be present):
+
+```bash
+sudo apt install python3-gi gir1.2-gtk-3.0 python3-cairo python3-psutil python3-pyudev fonts-ubuntu policykit-1
+scripts/install.sh            # this user only: ~/.local (launcher, menu entry, icons)
+scripts/install.sh --system   # all users: /usr/local (+ polkit helper), asks for sudo
+scripts/uninstall.sh          # remove (same options); settings and history are kept
+```
+
+**From the checkout**, nothing to install:
+
+```bash
+./run.sh                 # or bin/lindrivespace — system Python + system PyGObject
 ./run.sh /mnt/data       # open straight into a scan of a folder
 ```
 
-A `.deb` package (`debian/`) is part of the v1.0 milestone and will install the desktop entry, icon,
-AppStream metadata and the polkit policy for "Scan as administrator".
+The launcher accepts the same options everywhere: a folder to scan, `--debug`, `--smoke`,
+`--screenshot out.png`, and `--collect [--scan]` for the headless background collector.
 
 ## Development
 
