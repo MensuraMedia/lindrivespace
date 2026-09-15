@@ -17,7 +17,7 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
+from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 
 from lindrivespace import APP_ID, APP_NAME, __version__, logsetup  # noqa: E402
 from lindrivespace.config.settings import Settings  # noqa: E402
@@ -44,6 +44,12 @@ def data_path(*parts: str) -> Path:
         if c.exists():
             return c
     return candidates[0]
+
+
+class HistorySignal(GObject.GObject):
+    """Emits ``changed`` whenever a history sample is recorded (pages redraw)."""
+
+    __gsignals__ = {"changed": (GObject.SignalFlags.RUN_FIRST, None, ())}
 
 
 class LinDriveSpaceApp(Gtk.Application):
@@ -75,6 +81,61 @@ class LinDriveSpaceApp(Gtk.Application):
         self.window: MainWindow | None = None
         self.scan_registry = ScanRegistry(self.make_model, self.make_scan_options)
         self._auto_scan_attempts = 0
+        self.history = self._open_history()
+        self.history_signal = HistorySignal()
+        self._usage_timer = 0
+
+    # ---- history recording (automatic, between runs) ----------------------------
+
+    def _open_history(self):  # type: ignore[no-untyped-def]
+        try:
+            from lindrivespace.core.history import HistoryStore, default_history_path
+        except ImportError:  # the history module ships with WP17
+            return None
+        try:
+            return HistoryStore(default_history_path())
+        except Exception as exc:  # noqa: BLE001 - never block startup on the history file
+            self.log.error("history store unavailable: %s", exc)
+            return None
+
+    def record_usage_samples(self, mounts: list[object]) -> int:
+        """Called by the Overview after every mount refresh (throttled by the store)."""
+        if self.history is None:
+            return 0
+        written = 0
+        for m in mounts:
+            mountpoint = getattr(m, "mountpoint", "")
+            total = int(getattr(m, "total", 0) or 0)
+            used = int(getattr(m, "used", 0) or 0)
+            if not mountpoint or total <= 0 or getattr(m, "hidden", False):
+                continue
+            try:
+                if self.history.add_sample(mountpoint, used=used, total=total, source="usage"):
+                    written += 1
+            except Exception as exc:  # noqa: BLE001
+                self.log.warning("history sample failed for %s: %s", mountpoint, exc)
+        if written:
+            self.history_signal.emit("changed")
+        return written
+
+    def record_scan_sample(self, path: str, alloc: int, entries: int) -> None:
+        if self.history is None:
+            return
+        used = total = 0
+        try:
+            if os.path.ismount(path):
+                st = os.statvfs(path)
+                total = st.f_blocks * st.f_frsize
+                used = (st.f_blocks - st.f_bfree) * st.f_frsize
+        except OSError:
+            pass
+        try:
+            self.history.add_sample(
+                path, used=used, total=total, source="scan", alloc=alloc, entries=entries
+            )
+            self.history_signal.emit("changed")
+        except Exception as exc:  # noqa: BLE001
+            self.log.warning("history scan sample failed for %s: %s", path, exc)
 
     # ---- scan factories (shared by the Explorer and the startup queue) -------
 
@@ -120,6 +181,7 @@ class LinDriveSpaceApp(Gtk.Application):
         if entry is not None and entry.state == "done" and self.window is not None:
             if self.window.scan_history.get(path) != entry.finished_text:
                 self.window.record_scan(path, entry.finished_text)
+                self.record_scan_sample(path, entry.alloc, entry.entries)
 
     def _auto_scan_tick(self) -> bool:
         """Wait (up to ~20 s) for the mount list, then queue every mount."""

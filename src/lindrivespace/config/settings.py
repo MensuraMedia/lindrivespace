@@ -48,7 +48,21 @@ DEFAULTS: dict[str, Any] = {
         "primary": "",
         "secondary": "",
     },
-    "overview": {"view": "list"},  # list | cards
+    "overview": {
+        "columns": [
+            "mount",
+            "device",
+            "fstype",
+            "used",
+            "free",
+            "total",
+            "percent",
+            "scanned",
+            "actions",
+        ],
+        "hidden_columns": [],
+        "widths": {},
+    },
     "window": {"width": 1200, "height": 800, "maximized": False, "panel_visible": True},
     # Favourite folders/files: [{"path": str, "label": str, "added": "YYYY-MM-DD HH:MM"}]
     "favorites": [],

@@ -75,7 +75,7 @@ PAGES: list[PageSpec] = [
     PageSpec("overview", "Overview", "go-home-symbolic", _overview),
     PageSpec("explorer", "Explorer", "view-list-symbolic", _explorer, scrolled=False),
     PageSpec("favorites", "Favorites", "starred-symbolic", _favorites),
-    PageSpec("snapshots", "Snapshots", "document-save-symbolic", _snapshots),
+    PageSpec("snapshots", "History", "x-office-calendar-symbolic", _snapshots),
     PageSpec("hardware", "Hardware", "computer-symbolic", _hardware),
     PageSpec("glossary", "Glossary", "accessories-dictionary-symbolic", _glossary, scrolled=False),
     PageSpec("settings", "Settings", "emblem-system-symbolic", _settings, bottom=True),

@@ -43,6 +43,7 @@ class SettingsPage(BasePage):
         self._build_appearance_group()
         self._build_scanning_group()
         self._build_exclusions_group()
+        self._build_scheduler_group()
         self._build_mounts_group()
         self._build_explorer_group()
         self._build_about_group()
@@ -312,6 +313,112 @@ class SettingsPage(BasePage):
         self._persist("scan.excludes", list(DEFAULT_EXCLUDES))
         self._rebuild_excludes_list()
         self.exclude_error_label.set_visible(False)
+
+    # ---- Background collection (scheduler) ---------------------------------------
+
+    def _build_scheduler_group(self) -> None:
+        from lindrivespace.services import scheduler
+
+        group = PrefGroup("Background collection")
+        st = scheduler.status()
+
+        self.scheduler_switch = Gtk.Switch()
+        self.scheduler_switch.set_active(st.active)
+        self.scheduler_switch.set_sensitive(st.available)
+        self.scheduler_switch.get_accessible().set_name("Scan scheduler")
+        self.scheduler_switch.connect("notify::active", self._on_scheduler_toggled)
+        group.add_row(
+            PrefRow(
+                "Scan scheduler",
+                self.scheduler_switch,
+                "Run a background service agent that records usage and growth trends on a "
+                "schedule, even while the app is closed (systemd user timer).",
+            )
+        )
+
+        self.scheduler_interval = Gtk.ComboBoxText()
+        for key, label, _cal in scheduler.INTERVALS:
+            self.scheduler_interval.append(key, label)
+        self.scheduler_interval.set_active_id(st.interval)
+        self.scheduler_interval.get_accessible().set_name("Collection interval")
+        self.scheduler_interval.connect("changed", lambda _c: self._apply_scheduler())
+        group.add_row(PrefRow("Interval", self.scheduler_interval, "How often the agent runs."))
+
+        self.scheduler_scan_switch = Gtk.Switch()
+        self.scheduler_scan_switch.set_active(st.scan)
+        self.scheduler_scan_switch.get_accessible().set_name("Full scan on each run")
+        self.scheduler_scan_switch.connect("notify::active", lambda *_a: self._apply_scheduler())
+        group.add_row(
+            PrefRow(
+                "Full scan on each run",
+                self.scheduler_scan_switch,
+                "Also scan every mount (slower); otherwise only used/free space is sampled.",
+            )
+        )
+
+        run_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.scheduler_run_button = Gtk.Button(label="Run now")
+        self.scheduler_run_button.get_accessible().set_name("Run collection now")
+        self.scheduler_run_button.connect("clicked", self._on_scheduler_run_now)
+        run_row.pack_start(self.scheduler_run_button, False, False, 0)
+        self.scheduler_status_label = Gtk.Label(label="")
+        self.scheduler_status_label.set_xalign(0.0)
+        self.scheduler_status_label.set_line_wrap(True)
+        self.scheduler_status_label.get_style_context().add_class("dim")
+        run_row.pack_start(self.scheduler_status_label, True, True, 0)
+        group.add_row(run_row)
+        self._update_scheduler_status(st)
+
+        self.pack_start(group, False, False, 0)
+        self.scheduler_group = group
+
+    def _update_scheduler_status(self, st=None) -> None:  # type: ignore[no-untyped-def]
+        from lindrivespace.services import scheduler
+
+        st = st or scheduler.status()
+        if not st.available:
+            text = f"Scheduler unavailable: {st.detail}"
+        elif st.active:
+            parts = [st.detail]
+            if st.next_run:
+                parts.append(f"next run {st.next_run}")
+            if st.last_run:
+                parts.append(f"last run {st.last_run}")
+            text = " · ".join(parts)
+        else:
+            text = "Not scheduled. Turn on the scheduler or use Run now."
+        self.scheduler_status_label.set_text(text)
+
+    def _on_scheduler_toggled(self, switch: Gtk.Switch, _pspec: object) -> None:
+        from lindrivespace.services import scheduler
+
+        if switch.get_active():
+            ok, msg = scheduler.enable(
+                self.scheduler_interval.get_active_id() or "daily",
+                scan=self.scheduler_scan_switch.get_active(),
+            )
+        else:
+            ok, msg = scheduler.disable()
+        if not ok:
+            self.scheduler_status_label.set_text(f"Could not change the scheduler: {msg}")
+            return
+        self._update_scheduler_status()
+
+    def _apply_scheduler(self) -> None:
+        if (
+            getattr(self, "scheduler_switch", None) is not None
+            and self.scheduler_switch.get_active()
+        ):
+            self._on_scheduler_toggled(self.scheduler_switch, None)
+
+    def _on_scheduler_run_now(self, _button: Gtk.Button) -> None:
+        from lindrivespace.services import scheduler
+
+        ok, msg = scheduler.run_now()
+        self.scheduler_status_label.set_text(msg if ok else f"Run failed: {msg}")
+        signal = getattr(self.app, "history_signal", None)
+        if signal is not None:
+            signal.emit("changed")
 
     # ---- Mounts ---------------------------------------------------------
 

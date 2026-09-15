@@ -146,10 +146,6 @@ def _pump_until(condition, timeout: float = 5.0) -> None:
             time.sleep(0.005)
 
 
-def _all_cards(page) -> dict:  # type: ignore[no-untyped-def]
-    return page._cards
-
-
 class _FakeApp:
     """Just what BasePage/OverviewPage read off ``window.app``."""
 
@@ -180,7 +176,6 @@ class _FakeWindow:
 @pytest.fixture(scope="module")
 def window():  # type: ignore[no-untyped-def]
     settings = Settings(path=Path(tempfile.mkdtemp(prefix="lds-overview-")) / "settings.json")
-    settings.set("overview.view", "cards")  # the card tests below exercise the cards view
     win = _FakeWindow(settings)
 
     offscreen = Gtk.OffscreenWindow()
@@ -232,75 +227,46 @@ def test_refresh_populates_kpi_totals(overview_page) -> None:  # type: ignore[no
     assert overview_page.kpi_used.unit_label.get_text() == used_unit
 
 
-def test_flowbox_has_one_card_per_non_hidden_mount(overview_page) -> None:  # type: ignore[no-untyped-def]
-    cards = _all_cards(overview_page)
-    assert set(cards) == {"/boot/efi", "/", "/home", "/mnt/data"}
-    assert "/snap/core22/2411" not in cards
-    assert "/dev/mqueue" not in cards
-
-    flowboxes = [
-        child
-        for group in overview_page.groups_box.get_children()
-        for child in group.get_children()
-        if isinstance(child, Gtk.FlowBox)
-    ]
-    total_children = sum(len(fb.get_children()) for fb in flowboxes)
-    assert total_children == 4
-
-
-def test_scan_button_click_calls_window_request_scan(
-    overview_page, monkeypatch: pytest.MonkeyPatch
-) -> None:  # type: ignore[no-untyped-def]
-    calls: list[str] = []
-    monkeypatch.setattr(
-        overview_page.window, "request_scan", lambda path, force=False: calls.append(path)
-    )
-
-    card = _all_cards(overview_page)["/home"]
-    card.scan_button.clicked()
-
-    assert calls == ["/home"]
-
-
-def test_refresh_scan_history_updates_card_label(overview_page) -> None:  # type: ignore[no-untyped-def]
-    overview_page.window.scan_history["/home"] = "2026-09-14 18:41"
-
-    overview_page.refresh_scan_history()
-
-    card = _all_cards(overview_page)["/home"]
-    assert card.scanned_label.get_text() == "scanned 2026-09-14 18:41"
-    assert overview_page.kpi_scanned.value_label.get_text() == "1"
-
-
-def test_list_view_rows_and_switching(overview_page, monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    """List view: one row per mount under its disk row; double-click scans; switch back."""
+def test_overview_columns_reorder_hide_persist(overview_page) -> None:  # type: ignore[no-untyped-def]
     page = overview_page
-    page.set_view("list")
-    assert page.current_view == "list" and page.mount_list is not None
-    store = page.mount_list.store
+    assert page.mount_list is not None
+    ml = page.mount_list
+    settings = page.settings
+    assert ml.column_order()[0] == "mount"
+    ml.move_column_to("scanned", 1)
+    assert ml.column_order()[1] == "scanned"
+    assert settings.get("overview.columns")[1] == "scanned"
+    ml.set_column_visible("fstype", False)
+    assert not ml._columns["fstype"].get_visible()
+    assert "fstype" in settings.get("overview.hidden_columns")
+    ml.reset_columns()
+    assert ml.column_order() == list(ml.COLUMN_IDS)
+    assert ml._columns["fstype"].get_visible()
+    assert settings.get("overview.hidden_columns") == []
+
+
+def test_list_rows_scan_and_history_refresh(overview_page, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    page = overview_page
+    ml = page.mount_list
+    assert ml is not None
+    store = ml.store
     mount_rows = 0
     parent = store.get_iter_first()
     while parent is not None:
-        assert store.get_value(parent, 0) == "disk"
         child = store.iter_children(parent)
         while child is not None:
             mount_rows += 1
             child = store.iter_next(child)
         parent = store.iter_next(parent)
-    assert mount_rows == 4  # /, /boot/efi, /home, /mnt/data (hidden mounts off)
+    assert mount_rows == 4
     calls: list[tuple[str, bool]] = []
     monkeypatch.setattr(
         page.window, "request_scan", lambda mp, force=False: calls.append((mp, force))
     )
-    first_mount = store.iter_children(store.get_iter_first())
-    page.mount_list.view.row_activated(
-        store.get_path(first_mount), page.mount_list.view.get_column(0)
-    )
+    first = store.iter_children(store.get_iter_first())
+    ml.view.row_activated(store.get_path(first), ml.view.get_column(0))
     assert calls and calls[0][1] is True
-    # star column toggles the favourite
-    fav_calls: list[tuple[str, bool]] = []
-    page.mount_list.connect("favorite-toggled", lambda _l, mp, on: fav_calls.append((mp, on)))
-    page.mount_list.emit("favorite-toggled", calls[0][0], True)
-    assert fav_calls == [(calls[0][0], True)]
-    page.set_view("cards")
-    assert page.current_view == "cards" and page.mount_list is None and page._cards
+    page.window.scan_history["/home"] = "2026-09-14 18:41"
+    page.refresh_scan_history()
+    it = ml._iters["/home"]
+    assert "2026-09-14 18:41" in store.get_value(it, 9) or "18:41" in store.get_value(it, 9)

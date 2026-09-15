@@ -147,8 +147,29 @@ class MountList(Gtk.ScrolledWindow):
         "role-requested": (GObject.SignalFlags.RUN_FIRST, None, (str, str)),  # mountpoint, role
     }
 
-    def __init__(self, theme: ThemeDefinition, fmt_bytes: Callable[[int], str]) -> None:
+    COLUMN_IDS = (
+        "mount",
+        "device",
+        "fstype",
+        "used",
+        "free",
+        "total",
+        "percent",
+        "scanned",
+        "actions",
+    )
+    HIDEABLE = ("device", "fstype", "used", "free", "total", "percent", "scanned")
+
+    def __init__(
+        self,
+        theme: ThemeDefinition,
+        fmt_bytes: Callable[[int], str],
+        settings: object | None = None,
+    ) -> None:
         super().__init__()
+        self.settings = settings
+        self._columns: dict[str, Gtk.TreeViewColumn] = {}
+        self._loading = False
         self.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         self.set_shadow_type(Gtk.ShadowType.IN)  # the cell border colour runs around the table
         self.get_style_context().add_class("mount-list-frame")
@@ -165,6 +186,8 @@ class MountList(Gtk.ScrolledWindow):
         self.view.set_search_column(int(Col.TITLE))
         self._iters: dict[str, Gtk.TreeIter] = {}
         self._build_columns()
+        self._make_columns_user_configurable()
+        self.restore_state()
         self.view.connect("row-activated", self._on_row_activated)
         self.view.connect("button-press-event", self._on_button_press)
         self.view.get_selection().connect("changed", self._on_selection_changed)
@@ -208,6 +231,7 @@ class MountList(Gtk.ScrolledWindow):
         mount_col.set_sort_column_id(int(Col.TITLE))
         self.view.append_column(mount_col)
         self.view.set_expander_column(mount_col)
+        self._columns["mount"] = mount_col
 
         for title, kind, col_id, xalign, width in (
             ("Device", "device", Col.DEVICE, 0.0, 96),
@@ -219,6 +243,7 @@ class MountList(Gtk.ScrolledWindow):
             column = self._text_col(title, kind, xalign=xalign, width=width)
             column.set_sort_column_id(int(col_id))
             self.view.append_column(column)
+            self._columns[kind] = column
 
         bar_col = Gtk.TreeViewColumn(title="Used %")
         self.bar_renderer = PercentBarRenderer(self.theme)
@@ -230,10 +255,12 @@ class MountList(Gtk.ScrolledWindow):
         bar_col.set_resizable(True)
         bar_col.set_sort_column_id(int(Col.PERCENT))
         self.view.append_column(bar_col)
+        self._columns["percent"] = bar_col
 
         scanned_col = self._text_col("Scanned", "scanned", width=126)
         scanned_col.set_sort_column_id(int(Col.SCANNED))
         self.view.append_column(scanned_col)
+        self._columns["scanned"] = scanned_col
 
         star_col = Gtk.TreeViewColumn(title="")
         self.star_renderer = Gtk.CellRendererPixbuf()
@@ -247,9 +274,140 @@ class MountList(Gtk.ScrolledWindow):
         star_col.set_fixed_width(104)
         self.view.append_column(star_col)
         self.star_column = star_col
+        self._columns["actions"] = star_col
 
         # Default order is the registry's (primary, secondary, then the rest);
         # clicking a header sorts within each disk.
+
+    # ---- user-configurable columns (same behaviour as the Explorer) ---------------
+
+    _TITLES = {
+        "mount": "Mount",
+        "device": "Device",
+        "fstype": "Type",
+        "used": "Used",
+        "free": "Free",
+        "total": "Total",
+        "percent": "Used %",
+        "scanned": "Scanned",
+        "actions": "Actions",
+    }
+
+    def _make_columns_user_configurable(self) -> None:
+        for cid, column in self._columns.items():
+            column.set_reorderable(True)
+            column.set_resizable(cid != "actions")
+            button = column.get_button()
+            if button is not None:
+                button.connect("button-press-event", self._on_header_button_press)
+            column.connect("notify::width", self._on_column_width_changed, cid)
+        self.view.connect("columns-changed", self._on_columns_changed)
+
+    def _setting(self, key: str, default: object) -> object:
+        get = getattr(self.settings, "get", None)
+        return get(f"overview.{key}", default) if callable(get) else default
+
+    def _persist(self, key: str, value: object) -> None:
+        if self._loading or self.settings is None:
+            return
+        setter = getattr(self.settings, "set", None)
+        if callable(setter):
+            setter(f"overview.{key}", value)
+            save = getattr(self.settings, "save", None)
+            if callable(save):
+                try:
+                    save()
+                except OSError:
+                    pass
+
+    def column_order(self) -> list[str]:
+        ids = {column: cid for cid, column in self._columns.items()}
+        return [ids[c] for c in self.view.get_columns() if c in ids]
+
+    def move_column_to(self, cid: str, index: int) -> None:
+        order = [c for c in self.column_order() if c != cid]
+        index = max(0, min(index, len(order)))
+        order.insert(index, cid)
+        self._apply_order(order)
+        self._on_columns_changed(self.view)
+
+    def _apply_order(self, order: list[str]) -> None:
+        prev: Gtk.TreeViewColumn | None = None
+        for cid in order:
+            column = self._columns.get(cid)
+            if column is None:
+                continue
+            self.view.move_column_after(column, prev)
+            prev = column
+
+    def set_column_visible(self, cid: str, visible: bool) -> None:
+        if cid not in self.HIDEABLE:
+            return
+        self._columns[cid].set_visible(visible)
+        hidden = [c for c in self.HIDEABLE if not self._columns[c].get_visible()]
+        self._persist("hidden_columns", hidden)
+
+    def reset_columns(self) -> None:
+        self._loading = True
+        try:
+            self._apply_order(list(self.COLUMN_IDS))
+            for cid in self.HIDEABLE:
+                self._columns[cid].set_visible(True)
+        finally:
+            self._loading = False
+        self._persist("columns", list(self.COLUMN_IDS))
+        self._persist("hidden_columns", [])
+        self._persist("widths", {})
+
+    def restore_state(self) -> None:
+        self._loading = True
+        try:
+            order = self._setting("columns", list(self.COLUMN_IDS))
+            if isinstance(order, list) and set(order) <= set(self.COLUMN_IDS):
+                self._apply_order([c for c in order if c in self._columns])
+            hidden = self._setting("hidden_columns", [])
+            if isinstance(hidden, list):
+                for cid in self.HIDEABLE:
+                    self._columns[cid].set_visible(cid not in hidden)
+            widths = self._setting("widths", {})
+            if isinstance(widths, dict):
+                for cid, width in widths.items():
+                    if cid in self._columns and isinstance(width, int) and width >= 40:
+                        self._columns[cid].set_fixed_width(width)
+        finally:
+            self._loading = False
+
+    def _on_columns_changed(self, _view: Gtk.TreeView) -> None:
+        if not self._loading and len(self.view.get_columns()) == len(self._columns):
+            self._persist("columns", self.column_order())
+
+    def _on_column_width_changed(
+        self, column: Gtk.TreeViewColumn, _pspec: object, cid: str
+    ) -> None:
+        if self._loading:
+            return
+        widths = self._setting("widths", {})
+        widths = dict(widths) if isinstance(widths, dict) else {}
+        widths[cid] = int(column.get_width())
+        self._persist("widths", widths)
+
+    def _on_header_button_press(self, _button: Gtk.Widget, event: Gdk.EventButton) -> bool:
+        if event.button != 3:
+            return False
+        menu = Gtk.Menu()
+        for cid in self.HIDEABLE:
+            item = Gtk.CheckMenuItem(label=self._TITLES[cid])
+            item.set_active(self._columns[cid].get_visible())
+            item.connect("toggled", lambda i, c=cid: self.set_column_visible(c, i.get_active()))
+            menu.append(item)
+        menu.append(Gtk.SeparatorMenuItem())
+        reset = Gtk.MenuItem(label="Reset columns")
+        reset.connect("activate", lambda _i: self.reset_columns())
+        menu.append(reset)
+        menu.show_all()
+        self._header_menu = menu
+        menu.popup_at_pointer(event)
+        return True
 
     # ---- cell functions ---------------------------------------------------------
 

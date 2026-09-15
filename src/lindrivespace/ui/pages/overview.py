@@ -24,7 +24,7 @@ from lindrivespace.services.mounts_service import MountsService  # noqa: E402
 from lindrivespace.ui.pages.base import BasePage  # noqa: E402
 
 _DIMS = Layout.dimensions
-from lindrivespace.ui.widgets import KpiTile, MountCard, MountCardData  # noqa: E402
+from lindrivespace.ui.widgets import KpiTile, MountCardData  # noqa: E402
 from lindrivespace.ui.widgets.mount_list import MountList  # noqa: E402
 
 _STALE_SECONDS = 30.0
@@ -44,11 +44,9 @@ class OverviewPage(BasePage):
     def build_content(self) -> None:
         self.service = MountsService(self.settings)
         self.model = MountsModel()
-        self._cards: dict[str, MountCard] = {}
         self._mounts_by_mountpoint: dict[str, MountInfo] = {}
         self._selected_mountpoint: str | None = None
         self.mount_list: MountList | None = None
-        self.view_buttons: dict[str, Gtk.ToggleButton] = {}
         self._loaded = False
 
         self._build_header()
@@ -113,20 +111,6 @@ class OverviewPage(BasePage):
         spacer = Gtk.Box()
         row.pack_start(spacer, True, True, 0)
 
-        switcher = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
-        switcher.get_style_context().add_class("linked")
-        self.view_buttons: dict[str, Gtk.ToggleButton] = {}
-        self._updating_view = False
-        for view_id, label in (("list", "List"), ("cards", "Cards")):
-            button = Gtk.ToggleButton(label=label)
-            button.set_tooltip_text(f"Show mounts as {label.lower()}")
-            button.get_accessible().set_name(f"{label} view")
-            button.connect("toggled", self._on_view_toggled, view_id)
-            switcher.pack_start(button, False, False, 0)
-            self.view_buttons[view_id] = button
-        row.pack_start(switcher, False, False, 0)
-        self._set_view_buttons(self.current_view)
-
         self.refresh_button = Gtk.Button(label="Refresh")
         self.refresh_button.connect("clicked", lambda _b: self.service.refresh())
         row.pack_start(self.refresh_button, False, False, 0)
@@ -154,6 +138,16 @@ class OverviewPage(BasePage):
 
     def _on_mounts_changed(self, _service: MountsService) -> None:
         self.model.set_snapshot(self.service.disks, self.service.mounts)
+        record = getattr(self.app, "record_usage_samples", None)
+        if callable(record):
+            physical = [
+                m
+                for disk in self.service.disks
+                if self.model.is_visible_disk(disk, show_hidden=False)
+                for m in disk.mounts
+                if self.model.is_visible(m, show_hidden=False) and not m.is_bind
+            ]
+            record(physical)
         if not self._loaded:
             self._loaded = True
             self.loading_label.set_visible(False)
@@ -163,43 +157,15 @@ class OverviewPage(BasePage):
 
     # ---- disk group / card construction ------------------------------------
 
-    # ---- view type (list | cards) ---------------------------------------------
+    # ---- view type: list only (the cards view was removed 2026-09-15) ---------
 
     @property
     def current_view(self) -> str:
-        view = str(self.settings.get("overview.view", "list") or "list")
-        return view if view in ("list", "cards") else "list"
-
-    def set_view(self, view: str) -> None:
-        if view not in ("list", "cards") or view == self.current_view:
-            self._set_view_buttons(self.current_view)
-            return
-        self.settings.set("overview.view", view)
-        try:
-            self.settings.save()
-        except OSError:
-            pass
-        self._set_view_buttons(view)
-        self._rebuild_groups()
-
-    def _set_view_buttons(self, view: str) -> None:
-        self._updating_view = True
-        for view_id, button in self.view_buttons.items():
-            button.set_active(view_id == view)
-        self._updating_view = False
-
-    def _on_view_toggled(self, button: Gtk.ToggleButton, view_id: str) -> None:
-        if self._updating_view:
-            return
-        if button.get_active():
-            self.set_view(view_id)
-        else:
-            self._set_view_buttons(self.current_view)  # one stays pressed
+        return "list"
 
     def _rebuild_groups(self) -> None:
         for child in self.groups_box.get_children():
             self.groups_box.remove(child)
-        self._cards = {}
         self._mounts_by_mountpoint = {}
         self.mount_list = None
 
@@ -230,17 +196,8 @@ class OverviewPage(BasePage):
         # Disks holding the primary / secondary mountpoint come first; stable otherwise.
         groups.sort(key=lambda g: g[0])
         hidden_mounts.sort(key=lambda m: m.mountpoint)
-        if self.current_view == "list":
-            self._build_list(groups, hidden_mounts)
-        else:
-            for _r, disk, mounts in groups:
-                self.groups_box.pack_start(self._build_disk_group(disk, mounts), False, False, 0)
-            if hidden_mounts:
-                self.groups_box.pack_start(self._build_hidden_group(hidden_mounts), False, False, 0)
+        self._build_list(groups, hidden_mounts)
         self.groups_box.show_all()
-
-        if self._selected_mountpoint and self._selected_mountpoint in self._cards:
-            self._cards[self._selected_mountpoint].set_selected(True)
 
     def _disk_detail(self, disk: DiskInfo) -> str:
         kind_word = "rotational" if disk.rotational else disk.kind
@@ -249,7 +206,7 @@ class OverviewPage(BasePage):
     def _build_list(
         self, groups: list[tuple[int, DiskInfo, list[MountInfo]]], hidden: list[MountInfo]
     ) -> None:
-        mount_list = MountList(self.theme, self.app.format_bytes)
+        mount_list = MountList(self.theme, self.app.format_bytes, self.settings)
         data_groups: list[tuple[str, str, list[MountCardData]]] = []
         for _r, disk, mounts in groups:
             for m in mounts:
@@ -307,68 +264,6 @@ class OverviewPage(BasePage):
             reload()
         self.refresh_roles()
 
-    def _build_disk_group(self, disk: DiskInfo, mounts: list[MountInfo]) -> Gtk.Box:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-
-        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        name_label = Gtk.Label(label=disk.kname or "other")
-        name_label.get_style_context().add_class("section-title")
-        name_label.set_xalign(0.0)
-        header.pack_start(name_label, False, False, 0)
-
-        kind_word = "rotational" if disk.rotational else disk.kind
-        detail_parts = [p for p in (disk.model, disk.transport.upper() or None, kind_word) if p]
-        detail_label = Gtk.Label(label=" · ".join(detail_parts))
-        detail_ctx = detail_label.get_style_context()
-        detail_ctx.add_class("mono")
-        detail_ctx.add_class("muted")
-        detail_label.set_xalign(0.0)
-        header.pack_start(detail_label, False, False, 0)
-
-        box.pack_start(header, False, False, 0)
-
-        box.pack_start(self._flow(mounts, compact=False), False, False, 0)
-        return box
-
-    def _flow(self, mounts: list[MountInfo], *, compact: bool) -> Gtk.FlowBox:
-        """Cards in a wrapping row; every card has the same fixed width so groups line up."""
-        flow = Gtk.FlowBox()
-        flow.set_selection_mode(Gtk.SelectionMode.NONE)
-        flow.set_homogeneous(True)
-        flow.set_halign(Gtk.Align.START)
-        flow.set_min_children_per_line(1)
-        flow.set_max_children_per_line(6 if compact else 3)
-        flow.set_column_spacing(12)
-        flow.set_row_spacing(12)
-        width = _DIMS.CARD_WIDTH_COMPACT if compact else _DIMS.CARD_WIDTH
-        for mount in mounts:
-            card = self._build_card(mount)
-            card.set_size_request(width, -1)
-            card.set_hexpand(False)
-            child = Gtk.FlowBoxChild()
-            child.set_halign(Gtk.Align.START)
-            child.add(card)
-            flow.insert(child, -1)
-        return flow
-
-    def _build_hidden_group(self, mounts: list[MountInfo]) -> Gtk.Box:
-        """All hidden / virtual mounts (snap loops, tmpfs, …) in one compact group."""
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        name_label = Gtk.Label(label="hidden & virtual")
-        name_label.get_style_context().add_class("section-title")
-        name_label.set_xalign(0.0)
-        header.pack_start(name_label, False, False, 0)
-        detail_label = Gtk.Label(
-            label=f"{len(mounts)} mounts · snap loops, tmpfs, pseudo filesystems"
-        )
-        detail_label.get_style_context().add_class("mono")
-        detail_label.get_style_context().add_class("muted")
-        header.pack_start(detail_label, False, False, 0)
-        box.pack_start(header, False, False, 0)
-        box.pack_start(self._flow(mounts, compact=True), False, False, 0)
-        return box
-
     def _card_data(self, mount: MountInfo) -> MountCardData:
         """Card data plus the registry's live scan state for that mountpoint."""
         data = self.model.card_data(mount, self.window.scan_history)
@@ -395,30 +290,11 @@ class OverviewPage(BasePage):
         )
 
     def _on_scan_entry_changed(self, _registry: object, path: str) -> None:
-        card = self._cards.get(path)
         mount = self._mounts_by_mountpoint.get(path)
-        if mount is not None:
-            data = self._card_data(mount)
-            if card is not None:
-                card.update(data)
-            if self.mount_list is not None:
-                self.mount_list.update_mount(data)
+        if mount is not None and self.mount_list is not None:
+            self.mount_list.update_mount(self._card_data(mount))
         self._update_subtitle()
         self._update_kpis()
-
-    def _build_card(self, mount: MountInfo) -> MountCard:
-        data = self._card_data(mount)
-        card = MountCard(self.theme, data)
-        card.set_role(self.mount_roles().get(mount.mountpoint))
-        card.connect("scan-requested", self._on_card_scan_requested)
-        card.connect(
-            "favorite-toggled",
-            lambda _c, mp, active: self.favorites.add(mp) if active else self.favorites.remove(mp),
-        )
-        card.connect("selected", self._on_card_selected)
-        self._cards[mount.mountpoint] = card
-        self._mounts_by_mountpoint[mount.mountpoint] = mount
-        return card
 
     # ---- mount roles (Settings › Mounts: primary / secondary) ---------------
 
@@ -447,19 +323,11 @@ class OverviewPage(BasePage):
         return sorted(set(out))
 
     def refresh_roles(self) -> None:
-        """Re-badge and re-order cards after the Settings page changed the roles."""
-        if self._cards:
+        """Re-badge and re-order rows after the roles changed."""
+        if self._mounts_by_mountpoint:
             self._rebuild_groups()
 
     # ---- signal handlers ----------------------------------------------------
-
-    def _on_card_scan_requested(self, _card: MountCard, mountpoint: str) -> None:
-        self.window.request_scan(mountpoint, force=True)
-
-    def _on_card_selected(self, _card: MountCard, mountpoint: str) -> None:
-        self._selected_mountpoint = mountpoint
-        for mp, card in self._cards.items():
-            card.set_selected(mp == mountpoint)
 
     def _on_show_hidden_toggled(self, checkbox: Gtk.CheckButton) -> None:
         active = checkbox.get_active()
@@ -527,11 +395,7 @@ class OverviewPage(BasePage):
 
     def refresh_scan_history(self) -> None:
         """Refresh every card's scanned-at label and the Scanned KPI."""
-        for mountpoint, mount in self._mounts_by_mountpoint.items():
-            data = self._card_data(mount)
-            card = self._cards.get(mountpoint)
-            if card is not None:
-                card.update(data)
+        for mount in self._mounts_by_mountpoint.values():
             if self.mount_list is not None:
-                self.mount_list.update_mount(data)
+                self.mount_list.update_mount(self._card_data(mount))
         self._update_kpis()

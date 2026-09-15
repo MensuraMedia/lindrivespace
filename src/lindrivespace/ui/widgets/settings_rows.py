@@ -101,9 +101,11 @@ class PrefGroup(Gtk.Box):
     def enable_copy(self) -> Gtk.Button:
         """Add a flat "Copy" button to the card header that copies :meth:`as_text`."""
         if self.copy_button is None:
-            button = Gtk.Button(label="Copy")
+            button = Gtk.Button()
+            button.set_image(Gtk.Image.new_from_icon_name("edit-copy-symbolic", Gtk.IconSize.MENU))
             button.set_relief(Gtk.ReliefStyle.NONE)
             button.get_style_context().add_class("flat")
+            button.get_style_context().add_class("copy-icon")
             button.set_tooltip_text(f"Copy the {self.title} card as text")
             button.get_accessible().set_name(f"Copy {self.title}")
             button.connect("clicked", self._on_copy_clicked)
