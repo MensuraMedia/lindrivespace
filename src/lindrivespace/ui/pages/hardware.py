@@ -38,26 +38,28 @@ _VALUE_MAX_CHARS = 46
 
 # Disks table: (title, fixed width px, xalign)
 _DISK_COLUMNS: tuple[tuple[str, int, float], ...] = (
-    ("Device", 104, 0.0),
-    ("Model", 200, 0.0),
-    ("Size", 76, 1.0),
-    ("Type", 86, 0.0),
-    ("Link", 120, 0.0),
-    ("Scheduler", 84, 0.0),
-    ("TRIM", 48, 0.5),
-    ("Parts", 48, 1.0),
+    ("Device", 132, 0.0),
+    ("Model", 220, 0.0),
+    ("Size", 90, 1.0),
+    ("Type", 104, 0.0),
+    ("Link", 136, 0.0),
+    ("Scheduler", 110, 0.0),
+    ("TRIM", 64, 0.5),
+    ("Parts", 70, 1.0),
 )
+_DISK_EXPAND_COLUMN = "Model"
 # Columns whose text should ellipsize instead of clipping abruptly when a
 # value (a long device path, model string, or link description) overflows.
 _DISK_ELLIPSIZE_COLUMNS = frozenset({"Device", "Model", "Link"})
 # I/O activity table
 _IO_COLUMNS: tuple[tuple[str, int, float], ...] = (
-    ("Device", 90, 0.0),
-    ("Read MB/s", 90, 1.0),
-    ("Write MB/s", 90, 1.0),
-    ("IOPS (r/w)", 130, 1.0),
-    ("Util %", 70, 1.0),
+    ("Device", 132, 0.0),
+    ("Read MB/s", 110, 1.0),
+    ("Write MB/s", 110, 1.0),
+    ("IOPS (r/w)", 140, 1.0),
+    ("Util %", 90, 1.0),
 )
+_IO_EXPAND_COLUMN = "Device"
 
 
 def _disk_type_label(disk: hw.DiskHardware) -> str:
@@ -121,6 +123,8 @@ class HardwarePage(BasePage):
         self._prev_io_time: float | None = None
         self.io_store: Gtk.ListStore | None = None
         self.disks_store: Gtk.ListStore | None = None
+        self.io_tree: Gtk.TreeView | None = None
+        self.disks_tree: Gtk.TreeView | None = None
 
         self.add_title(
             self.title,
@@ -234,6 +238,9 @@ class HardwarePage(BasePage):
         for child in self.content_box.get_children():
             self.content_box.remove(child)
 
+        # Disks and live I/O first (user request): the storage facts matter most here.
+        self.content_box.pack_start(self._build_disks_group(report.disks), False, False, 0)
+        self.content_box.pack_start(self._build_io_group(report.disks), False, False, 0)
         self.content_box.pack_start(self._build_system_group(report.system), False, False, 0)
         self.content_box.pack_start(self._build_board_group(report.board), False, False, 0)
         self.content_box.pack_start(
@@ -245,8 +252,6 @@ class HardwarePage(BasePage):
         self.content_box.pack_start(
             self._build_drive_types_group(report.drive_types), False, False, 0
         )
-        self.content_box.pack_start(self._build_disks_group(report.disks), False, False, 0)
-        self.content_box.pack_start(self._build_io_group(report.disks), False, False, 0)
         self.content_box.pack_start(
             self._build_filesystems_group(report.filesystems, report.pseudo_filesystems),
             False,
@@ -368,6 +373,52 @@ class HardwarePage(BasePage):
         group.add_row(flow)
         return group
 
+    def _styled_table(
+        self,
+        store: Gtk.ListStore,
+        columns: tuple[tuple[str, int, float], ...],
+        *,
+        mono: frozenset[str] = frozenset(),
+        ellipsize: frozenset[str] = frozenset(),
+        expand: str = "",
+    ) -> tuple[Gtk.TreeView, Gtk.ScrolledWindow]:
+        """A table that looks like the Overview's mount list: bordered frame, bold muted
+        headers, grid lines, 6 px cell padding, mono for device/number columns, sortable."""
+        tree = Gtk.TreeView(model=store)
+        ctx = tree.get_style_context()
+        ctx.add_class("mount-list")
+        ctx.add_class("grid-table")
+        tree.set_grid_lines(Gtk.TreeViewGridLines.BOTH)
+        tree.set_fixed_height_mode(True)
+        tree.set_headers_visible(True)
+        tree.set_headers_clickable(True)
+        tree.set_hexpand(True)
+        mono_family = self.theme.font_mono.split(",")[0]
+        for index, (title, width, xalign) in enumerate(columns):
+            column = Gtk.TreeViewColumn(title)
+            column.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
+            column.set_fixed_width(width)
+            column.set_resizable(True)
+            column.set_sort_column_id(index)
+            column.set_alignment(xalign)
+            renderer = Gtk.CellRendererText()
+            renderer.set_property("xalign", xalign)
+            renderer.set_property("xpad", 6)
+            if title in mono:
+                renderer.set_property("family", mono_family)
+            if title in ellipsize:
+                renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
+            column.pack_start(renderer, True)
+            column.add_attribute(renderer, "text", index)
+            column.set_expand(title == expand)
+            tree.append_column(column)
+        frame = Gtk.ScrolledWindow()
+        frame.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
+        frame.set_shadow_type(Gtk.ShadowType.IN)
+        frame.get_style_context().add_class("mount-list-frame")
+        frame.add(tree)
+        return tree, frame
+
     def _build_disks_group(self, disks: tuple[hw.DiskHardware, ...]) -> PrefGroup:
         group = _copyable(PrefGroup("Disks"))
         if not disks:
@@ -389,24 +440,14 @@ class HardwarePage(BasePage):
                     str(len(disk.partitions)),
                 ]
             )
-        tree = Gtk.TreeView(model=store)
-        tree.set_grid_lines(Gtk.TreeViewGridLines.BOTH)
-        tree.get_style_context().add_class("grid-table")
-        tree.set_fixed_height_mode(True)
-        tree.set_headers_visible(True)
-        tree.set_hexpand(True)
-        for index, (title, width, xalign) in enumerate(_DISK_COLUMNS):
-            column = Gtk.TreeViewColumn(title)
-            column.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
-            column.set_fixed_width(width)
-            renderer = Gtk.CellRendererText()
-            renderer.set_property("xalign", xalign)
-            if title in _DISK_ELLIPSIZE_COLUMNS:
-                renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
-            column.pack_start(renderer, True)
-            column.add_attribute(renderer, "text", index)
-            tree.append_column(column)
-        group.add_row(tree)
+        self.disks_tree, frame = self._styled_table(
+            store,
+            _DISK_COLUMNS,
+            mono=frozenset({"Device", "Size", "Parts"}),
+            ellipsize=_DISK_ELLIPSIZE_COLUMNS,
+            expand=_DISK_EXPAND_COLUMN,
+        )
+        group.add_row(frame)
 
         for disk in disks:
             if not disk.partitions:
@@ -434,22 +475,13 @@ class HardwarePage(BasePage):
         store = Gtk.ListStore(str, str, str, str, str)
         for disk in disks:
             store.append([disk.kname, "—", "—", "—", "—"])
-        tree = Gtk.TreeView(model=store)
-        tree.set_grid_lines(Gtk.TreeViewGridLines.BOTH)
-        tree.get_style_context().add_class("grid-table")
-        tree.set_fixed_height_mode(True)
-        tree.set_headers_visible(True)
-        tree.set_hexpand(True)
-        for index, (title, width, xalign) in enumerate(_IO_COLUMNS):
-            column = Gtk.TreeViewColumn(title)
-            column.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
-            column.set_fixed_width(width)
-            renderer = Gtk.CellRendererText()
-            renderer.set_property("xalign", xalign)
-            column.pack_start(renderer, True)
-            column.add_attribute(renderer, "text", index)
-            tree.append_column(column)
-        group.add_row(tree)
+        self.io_tree, frame = self._styled_table(
+            store,
+            _IO_COLUMNS,
+            mono=frozenset({"Device", "Read MB/s", "Write MB/s", "IOPS (r/w)", "Util %"}),
+            expand=_IO_EXPAND_COLUMN,
+        )
+        group.add_row(frame)
         detail = self._info_label(
             f"Refreshes every {_IO_REFRESH_SECONDS} s while this page is visible."
         )

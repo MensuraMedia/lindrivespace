@@ -557,6 +557,46 @@ treeview.view check:checked {
   color: #ffffff;
 }
 
+/* Menu check/radio items (column selectors): grey when off, accent + white tick when on.
+   Mint-Y draws its blue bitmap glyph via -gtk-icon-source on "menu menuitem check", so the
+   override has to be at least that specific. */
+menu menuitem check,
+menu menuitem radio {
+  background-color: @bg_sunken;
+  background-image: none;
+  border: 1px solid @line_soft;
+  color: #ffffff;
+  -gtk-icon-source: none;
+  -gtk-icon-shadow: none;
+  min-height: 14px;
+  min-width: 14px;
+}
+menu menuitem check:checked,
+menu menuitem check:active {
+  background-color: @accent;
+  background-image: none;
+  border-color: @accent;
+  color: #ffffff;
+  -gtk-icon-source: -gtk-icontheme("object-select-symbolic");
+  -gtk-icon-transform: scale(0.8);
+}
+menu menuitem radio:checked,
+menu menuitem radio:active {
+  background-color: @accent;
+  border-color: @accent;
+  -gtk-icon-source: none;
+  background-image: radial-gradient(circle closest-side, #ffffff 38%, transparent 42%);
+}
+menu menuitem:hover check,
+menu menuitem:hover radio {
+  border-color: @accent_hot;
+}
+menu menuitem:hover check:checked,
+menu menuitem:hover radio:checked {
+  background-color: @accent_hot;
+  border-color: @accent_hot;
+}
+
 /* ---- Overview list view ---------------------------------------------------- */
 treeview.view.grid-table {
   background-color: @bg_surface;
