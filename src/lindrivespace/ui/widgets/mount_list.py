@@ -198,7 +198,7 @@ class MountList(Gtk.ScrolledWindow):
         mount_col.pack_start(self.title_renderer, True)
         mount_col.set_cell_data_func(self.title_renderer, self._cell_func, "title")
         mount_col.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
-        mount_col.set_fixed_width(200)
+        mount_col.set_fixed_width(240)
         mount_col.set_expand(True)
         mount_col.set_resizable(True)
         mount_col.set_sort_column_id(int(Col.TITLE))

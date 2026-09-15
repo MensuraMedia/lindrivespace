@@ -257,7 +257,7 @@ class OverviewPage(BasePage):
             data_groups.append(
                 (
                     disk.kname or "other",
-                    self._disk_detail(disk),
+                    disk.model or self._disk_detail(disk),  # section rows: keep it short
                     [self._card_data(m) for m in mounts],
                 )
             )
