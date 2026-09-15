@@ -198,7 +198,7 @@ class MountList(Gtk.ScrolledWindow):
         mount_col.pack_start(self.title_renderer, True)
         mount_col.set_cell_data_func(self.title_renderer, self._cell_func, "title")
         mount_col.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
-        mount_col.set_fixed_width(240)
+        mount_col.set_fixed_width(214)
         mount_col.set_expand(True)
         mount_col.set_resizable(True)
         mount_col.set_sort_column_id(int(Col.TITLE))
@@ -206,11 +206,11 @@ class MountList(Gtk.ScrolledWindow):
         self.view.set_expander_column(mount_col)
 
         for title, kind, col_id, xalign, width in (
-            ("Device", "device", Col.DEVICE, 0.0, 100),
-            ("Type", "fstype", Col.FSTYPE, 0.0, 62),
-            ("Used", "used", Col.USED, 1.0, 82),
-            ("Free", "free", Col.FREE, 1.0, 82),
-            ("Total", "total", Col.TOTAL, 1.0, 82),
+            ("Device", "device", Col.DEVICE, 0.0, 96),
+            ("Type", "fstype", Col.FSTYPE, 0.0, 58),
+            ("Used", "used", Col.USED, 1.0, 78),
+            ("Free", "free", Col.FREE, 1.0, 78),
+            ("Total", "total", Col.TOTAL, 1.0, 78),
         ):
             column = self._text_col(title, kind, xalign=xalign, width=width)
             column.set_sort_column_id(int(col_id))
@@ -221,12 +221,12 @@ class MountList(Gtk.ScrolledWindow):
         bar_col.pack_start(self.bar_renderer, True)
         bar_col.set_cell_data_func(self.bar_renderer, self._bar_func)
         bar_col.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
-        bar_col.set_fixed_width(150)
+        bar_col.set_fixed_width(136)
         bar_col.set_resizable(True)
         bar_col.set_sort_column_id(int(Col.PERCENT))
         self.view.append_column(bar_col)
 
-        scanned_col = self._text_col("Scanned", "scanned", width=150)
+        scanned_col = self._text_col("Scanned", "scanned", width=126)
         scanned_col.set_sort_column_id(int(Col.SCANNED))
         self.view.append_column(scanned_col)
 
@@ -239,7 +239,7 @@ class MountList(Gtk.ScrolledWindow):
         star_col.pack_start(self.button_renderer, False)
         star_col.set_cell_data_func(self.button_renderer, self._button_func)
         star_col.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
-        star_col.set_fixed_width(112)
+        star_col.set_fixed_width(104)
         self.view.append_column(star_col)
         self.star_column = star_col
 
