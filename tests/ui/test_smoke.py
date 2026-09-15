@@ -49,7 +49,8 @@ def test_pages_register_and_switch(window) -> None:  # type: ignore[no-untyped-d
     window.show_page("explorer")
     assert window.stack.get_visible_child_name() == "explorer"
     assert window.sidebar.active_id == "explorer"
-    assert window.subtitle_label.get_text() == "Explorer"
+    assert window.page_title == "Explorer"
+    assert "Explorer" in window.title_label.get_text()
     # sidebar click drives the window
     window.sidebar.buttons["settings"].clicked()
     assert window.current_page_id == "settings"

@@ -57,19 +57,15 @@ class MainWindow(Gtk.ApplicationWindow):
         header.set_show_close_button(True)
         header.get_style_context().add_class("lds-header")
 
-        title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self.title_label = Gtk.Label(label=APP_NAME)
+        # One label renders "LinDriveSpace — Overview" so the app name, dash and page
+        # name share a single baseline and ordinary word spacing (separate labels in a
+        # box sat on the same baseline but the dash's side bearings made the gaps uneven).
+        self.title_label = Gtk.Label()
         self.title_label.get_style_context().add_class("header-title")
-        # "LinDriveSpace — Overview": page name at the same size as the app name.
-        self.title_dash = Gtk.Label(label="—")
-        self.title_dash.get_style_context().add_class("header-title")
-        self.subtitle_label = Gtk.Label(label="")
-        self.subtitle_label.get_style_context().add_class("header-title")
-        self.subtitle_label.get_style_context().add_class("header-subtitle")
-        title_box.pack_start(self.title_label, False, False, 0)
-        title_box.pack_start(self.title_dash, False, False, 0)
-        title_box.pack_start(self.subtitle_label, False, False, 0)
-        header.pack_start(title_box)
+        self.title_label.set_xalign(0.0)
+        self._page_title = ""
+        self._render_title()
+        header.pack_start(self.title_label)
 
         # Pages may place a widget here (scan progress pill, filter entry).
         self.header_center = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -227,6 +223,23 @@ class MainWindow(Gtk.ApplicationWindow):
 
     # ---- navigation -------------------------------------------------------
 
+    @property
+    def page_title(self) -> str:
+        return self._page_title
+
+    def set_page_title(self, text: str) -> None:
+        self._page_title = text
+        self._render_title()
+
+    def _render_title(self) -> None:
+        name = GLib.markup_escape_text(APP_NAME)
+        if self._page_title:
+            page = GLib.markup_escape_text(self._page_title)
+            muted = self.app.theme.fg_muted
+            self.title_label.set_markup(f'{name} <span foreground="{muted}">\u2014 {page}</span>')
+        else:
+            self.title_label.set_markup(name)
+
     def show_page(self, page_id: str) -> None:
         if page_id not in self.pages or page_id == self.current_page_id:
             return
@@ -235,7 +248,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.current_page_id = page_id
         self.stack.set_visible_child_name(page_id)
         self.sidebar.set_active(page_id)
-        self.subtitle_label.set_text(self.specs[page_id].label)
+        self.set_page_title(self.specs[page_id].label)
         self.pages[page_id].on_shown()
 
     def request_scan(self, path: str, force: bool = False) -> None:

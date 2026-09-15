@@ -66,3 +66,4 @@
 | 2026-09-15T23:10:00 | Performance verified with the same scripted walkthrough: stalls > 150 ms 105 → 1, slowest click 272 → 53 ms, RSS 1 525 → 593 MB, display suite 15 → 8 s (docs/BACKLOG.md §E). |
 | 2026-09-15T23:40:00 | README (user): each screenshot now sits under its feature description (Explorer, Analysis, History, Favorites, Hardware, Glossary, Settings; Overview is the hero image); the separate gallery is a one-paragraph pointer. Stale "cards" wording removed; status line updated to v0.1 installable. |
 | 2026-09-15T23:55:00 | Title bar (user): page name shown at the same size and weight as the app name, separated by an em dash ("LinDriveSpace — Overview"); page name a shade lighter. |
+| 2026-09-16T00:15:00 | Title bar (user): app name, dash and page name rendered as one label with Pango markup — single baseline and ordinary word spacing (three boxed labels had uneven gaps around the dash). MainWindow.page_title / set_page_title replace subtitle_label. |
