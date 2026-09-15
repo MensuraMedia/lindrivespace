@@ -307,3 +307,33 @@ menuitem:hover {
   background-color: @accent;
   color: #ffffff;
 }
+
+/* ---- toggle / segmented buttons ------------------------------------------ */
+button:checked,
+button.toggle:checked {
+  background-color: @accent;
+  border-color: @accent;
+  color: #ffffff;
+  font-weight: 500;
+}
+button:checked:hover {
+  background-color: @accent_hot;
+}
+
+/* ---- progress bars (header scan pill) ------------------------------------ */
+progressbar trough {
+  background-color: @bg_deep;
+  border: 1px solid @line;
+  border-radius: 3px;
+  min-height: 6px;
+}
+progressbar progress {
+  background-color: @accent;
+  background-image: none;
+  border: none;
+  border-radius: 3px;
+  min-height: 6px;
+}
+progressbar.header-progress trough {
+  min-width: 120px;
+}

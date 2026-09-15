@@ -1,0 +1,178 @@
+"""Scan toolbar: path entry, scan controls, and the primary/hidden/cross-mount
+toggles that sit above the Explorer tree-table.
+
+Owns no scan state itself — every toggle just emits a signal (or, for
+Cancel/Pause, is exposed as a plain public button) so the page can wire it to
+``ScanController`` and persist the choice in ``Settings``.
+"""
+
+from __future__ import annotations
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import GObject, Gtk  # noqa: E402
+
+from lindrivespace.config.settings import Settings  # noqa: E402
+from lindrivespace.config.theme import ThemeDefinition  # noqa: E402
+
+
+class ScanToolbar(Gtk.Box):
+    """Horizontal row: path entry + folder chooser, scan controls, view toggles."""
+
+    __gtype_name__ = "LdsScanToolbar"
+    __gsignals__ = {
+        "scan-requested": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        "cancel-requested": (GObject.SignalFlags.RUN_FIRST, None, ()),
+        "pause-toggled": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
+        "primary-changed": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
+        "hidden-changed": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
+        "cross-mounts-changed": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
+    }
+
+    def __init__(self, theme: ThemeDefinition, settings: Settings) -> None:
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self._theme = theme
+        self._settings = settings
+        self._updating_primary = False
+        self._paused = False
+
+        self.path_entry = Gtk.Entry()
+        self.path_entry.set_placeholder_text("Path to scan…")
+        self.path_entry.set_hexpand(True)
+        self.path_entry.connect("activate", self._on_entry_activate)
+        self.pack_start(self.path_entry, True, True, 0)
+
+        self.folder_button = Gtk.Button.new_from_icon_name(
+            "folder-open-symbolic", Gtk.IconSize.BUTTON
+        )
+        self.folder_button.set_tooltip_text("Choose a folder…")
+        self.folder_button.connect("clicked", self._on_choose_folder)
+        self.pack_start(self.folder_button, False, False, 0)
+
+        self.scan_button = Gtk.Button(label="Scan")
+        self.scan_button.get_style_context().add_class("primary")
+        self.scan_button.connect("clicked", self._on_scan_clicked)
+        self.pack_start(self.scan_button, False, False, 0)
+
+        self.cancel_button = Gtk.Button(label="Cancel")
+        self.cancel_button.connect("clicked", self._on_cancel_clicked)
+        self.cancel_button.set_no_show_all(True)
+        self.cancel_button.set_visible(False)
+        self.pack_start(self.cancel_button, False, False, 0)
+
+        self.pause_button = Gtk.Button(label="Pause")
+        self.pause_button.connect("clicked", self._on_pause_clicked)
+        self.pause_button.set_no_show_all(True)
+        self.pause_button.set_visible(False)
+        self.pack_start(self.pause_button, False, False, 0)
+
+        self.pack_start(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 4)
+
+        primary_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        primary_box.get_style_context().add_class("linked")
+        self.allocated_button = Gtk.ToggleButton(label="Allocated")
+        self.apparent_button = Gtk.ToggleButton(label="Apparent")
+        self.allocated_button.connect("toggled", self._on_primary_toggled, True)
+        self.apparent_button.connect("toggled", self._on_primary_toggled, False)
+        primary_box.pack_start(self.allocated_button, False, False, 0)
+        primary_box.pack_start(self.apparent_button, False, False, 0)
+        self.pack_start(primary_box, False, False, 0)
+
+        self.hidden_button = Gtk.ToggleButton(label="Hidden")
+        self.hidden_button.set_tooltip_text("Show hidden files and folders")
+        self.hidden_button.connect("toggled", self._on_hidden_toggled)
+        self.pack_start(self.hidden_button, False, False, 0)
+
+        self.cross_mounts_button = Gtk.ToggleButton(label="Cross mounts")
+        self.cross_mounts_button.set_tooltip_text("Descend into other filesystems")
+        self.cross_mounts_button.connect("toggled", self._on_cross_mounts_toggled)
+        self.pack_start(self.cross_mounts_button, False, False, 0)
+
+        allocated = settings.get("primary_size", "allocated") == "allocated"
+        self._set_primary_buttons(allocated)
+        self.hidden_button.set_active(bool(settings.get("scan.show_hidden", True)))
+        self.cross_mounts_button.set_active(bool(settings.get("scan.cross_mounts", False)))
+
+    # ---- path -------------------------------------------------------------
+
+    def get_path(self) -> str:
+        return self.path_entry.get_text().strip()
+
+    def set_path(self, path: str) -> None:
+        self.path_entry.set_text(path)
+
+    def _on_entry_activate(self, entry: Gtk.Entry) -> None:
+        path = entry.get_text().strip()
+        if path:
+            self.emit("scan-requested", path)
+
+    def _on_scan_clicked(self, _button: Gtk.Button) -> None:
+        path = self.get_path()
+        if path:
+            self.emit("scan-requested", path)
+
+    def _on_choose_folder(self, _button: Gtk.Button) -> None:
+        toplevel = self.get_toplevel()
+        parent = toplevel if isinstance(toplevel, Gtk.Window) else None
+        dialog = Gtk.FileChooserDialog(
+            title="Select a folder to scan",
+            parent=parent,
+            action=Gtk.FileChooserAction.SELECT_FOLDER,
+        )
+        dialog.add_buttons("Cancel", Gtk.ResponseType.CANCEL, "Open", Gtk.ResponseType.OK)
+        try:
+            response = dialog.run()
+            if response == Gtk.ResponseType.OK:
+                path = dialog.get_filename()
+                if path:
+                    self.set_path(path)
+                    self.emit("scan-requested", path)
+        finally:
+            dialog.destroy()
+
+    # ---- run state ----------------------------------------------------------
+
+    def _on_cancel_clicked(self, _button: Gtk.Button) -> None:
+        self.emit("cancel-requested")
+
+    def _on_pause_clicked(self, _button: Gtk.Button) -> None:
+        self._paused = not self._paused
+        self.pause_button.set_label("Resume" if self._paused else "Pause")
+        self.emit("pause-toggled", self._paused)
+
+    def set_running(self, running: bool) -> None:
+        self.cancel_button.set_visible(running)
+        self.pause_button.set_visible(running)
+        self.scan_button.set_sensitive(not running)
+        if not running:
+            self._paused = False
+            self.pause_button.set_label("Pause")
+
+    # ---- view toggles -------------------------------------------------------
+
+    def _set_primary_buttons(self, allocated: bool) -> None:
+        self._updating_primary = True
+        self.allocated_button.set_active(allocated)
+        self.apparent_button.set_active(not allocated)
+        self._updating_primary = False
+
+    def _on_primary_toggled(self, button: Gtk.ToggleButton, allocated: bool) -> None:
+        if self._updating_primary:
+            return
+        if not button.get_active():
+            # A segmented pair always has exactly one side active.
+            button.set_active(True)
+            return
+        self._set_primary_buttons(allocated)
+        self.emit("primary-changed", allocated)
+
+    def _on_hidden_toggled(self, button: Gtk.ToggleButton) -> None:
+        self.emit("hidden-changed", button.get_active())
+
+    def _on_cross_mounts_toggled(self, button: Gtk.ToggleButton) -> None:
+        self.emit("cross-mounts-changed", button.get_active())
+
+    def set_theme(self, theme: ThemeDefinition) -> None:
+        """Kept for API parity with the other Explorer widgets."""
+        self._theme = theme

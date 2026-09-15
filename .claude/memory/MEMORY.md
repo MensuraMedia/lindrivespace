@@ -7,6 +7,7 @@
 
 ## Changes
 <!-- Add newest first -->
+- [WP8 explorer](changes/2026-09-14-wp8-explorer.md) — tree-table page, columns, toolbar, breadcrumb, menu
 - [WP11 privilege](changes/2026-09-14-wp11-privilege.md) — pkexec helper, event codec
 - [WP6 tree model + controller](changes/2026-09-14-wp6-tree-model-controller.md) — lazy TreeStore, draw-time formatting, drain
 - [WP4 geometry/data](changes/2026-09-14-wp4-geometry-data.md) — treemap, classify, snapshot
