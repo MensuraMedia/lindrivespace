@@ -233,9 +233,9 @@ def test_overview_columns_reorder_hide_persist(overview_page) -> None:  # type: 
     ml = page.mount_list
     settings = page.settings
     assert ml.column_order()[0] == "mount"
-    ml.move_column_to("scanned", 1)
-    assert ml.column_order()[1] == "scanned"
-    assert settings.get("overview.columns")[1] == "scanned"
+    ml.move_column_to("total", 1)
+    assert ml.column_order()[1] == "total"
+    assert settings.get("overview.columns")[1] == "total"
     ml.set_column_visible("fstype", False)
     assert not ml._columns["fstype"].get_visible()
     assert "fstype" in settings.get("overview.hidden_columns")

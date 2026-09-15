@@ -93,3 +93,22 @@ def test_unwritable_dir_falls_back_to_stderr(tmp_path: Path) -> None:
     path = logsetup.setup_logging(directory=blocked / "logs")
     assert path is None  # no file handler, but no exception either
     logsetup.get_logger().warning("still works")
+
+
+def test_reconfigure_moves_the_log_file_and_level(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    import logging
+
+    from lindrivespace import logsetup
+
+    logsetup.setup_logging(directory=tmp_path / "a")
+    path = logsetup.reconfigure(directory=tmp_path / "b", level="warning")
+    assert path == tmp_path / "b" / logsetup.LOG_FILE_NAME
+    assert logsetup.log_path() == path and logsetup.current_level() == "warning"
+    log = logsetup.get_logger("t")
+    log.info("hidden")
+    log.warning("kept")
+    for h in logging.getLogger(logsetup.LOGGER_NAME).handlers:
+        h.flush()
+    text = path.read_text(encoding="utf-8")
+    assert "kept" in text and "hidden" not in text
+    assert logsetup.level_value("nonsense") == logging.INFO

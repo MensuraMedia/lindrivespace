@@ -227,3 +227,25 @@ def test_primary_secondary_mountpoints(window) -> None:  # type: ignore[no-untyp
     assert overview.mount_roles() == {"/mnt/data": "secondary"}
     sec.set_active_id("")
     assert settings.get("mounts.secondary") == ""
+
+
+def test_diagnostics_group_changes_log_folder_and_level(window, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    from lindrivespace import logsetup
+
+    window.show_page("settings")
+    page = window.pages["settings"]
+    settings = window.app.settings
+    old_dir, old_level = settings.get("logging.dir"), settings.get("logging.level")
+    try:
+        page._set_log_dir(str(tmp_path))
+        assert logsetup.log_path() == tmp_path / logsetup.LOG_FILE_NAME
+        assert settings.get("logging.dir") == str(tmp_path)
+        page.log_level_combo.set_active_id("warning")
+        assert settings.get("logging.level") == "warning"
+        assert logsetup.current_level() == "warning"
+        assert str(tmp_path) in page.log_path_label.get_text()
+    finally:
+        settings.set("logging.dir", old_dir)
+        settings.set("logging.level", old_level)
+        settings.save()
+        window.app.apply_logging_settings()

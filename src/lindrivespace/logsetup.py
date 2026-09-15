@@ -1,7 +1,8 @@
 """Error trapping and logging.
 
 * Rotating log file under ``$XDG_CACHE_HOME/lindrivespace/logs/`` (1 MB × 5),
-  DEBUG level; stderr at WARNING (DEBUG with ``--debug``).
+  INFO level by default (folder and level configurable in Settings › Diagnostics);
+  stderr at WARNING (DEBUG with ``--debug``).
 * Every uncaught exception — main thread, worker threads, and GTK/GLib
   callbacks (PyGObject routes those through ``sys.excepthook``) — is logged
   with its traceback and handed to a registered UI reporter (the main window
@@ -37,7 +38,7 @@ _BACKUPS = 5
 
 ErrorReporter = Callable[[str, str], None]  # (headline, details)
 
-_state: dict[str, Any] = {"path": None, "reporter": None, "installed": False}
+_state: dict[str, Any] = {"path": None, "reporter": None, "installed": False, "level": "info"}
 F = TypeVar("F", bound=Callable[..., Any])
 
 
@@ -59,7 +60,59 @@ def register_error_reporter(reporter: ErrorReporter | None) -> None:
     _state["reporter"] = reporter
 
 
-def setup_logging(*, debug: bool = False, directory: Path | None = None) -> Path | None:
+LEVELS: tuple[tuple[str, str, int], ...] = (
+    ("debug", "Debug (everything)", logging.DEBUG),
+    ("info", "Info (default)", logging.INFO),
+    ("warning", "Warnings and errors only", logging.WARNING),
+)
+_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
+
+
+def level_value(name: str) -> int:
+    for key, _label, value in LEVELS:
+        if key == name:
+            return value
+    return logging.INFO
+
+
+def _install_file_handler(root: logging.Logger, target_dir: Path, level: str) -> Path | None:
+    """Replace the rotating file handler; returns the log path (None if unwritable)."""
+    for handler in list(root.handlers):
+        if isinstance(handler, RotatingFileHandler):
+            root.removeHandler(handler)
+            handler.close()
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        path = target_dir / LOG_FILE_NAME
+        file_handler = RotatingFileHandler(
+            path, maxBytes=_MAX_BYTES, backupCount=_BACKUPS, encoding="utf-8"
+        )
+        file_handler.setLevel(level_value(level))
+        file_handler.setFormatter(logging.Formatter(_FORMAT))
+        root.addHandler(file_handler)
+    except OSError as exc:  # read-only dir: keep going with stderr only
+        root.warning("log file unavailable (%s): %s", target_dir, exc)
+        return None
+    _state["path"] = path
+    _state["level"] = level
+    return path
+
+
+def reconfigure(*, directory: Path | None = None, level: str = "info") -> Path | None:
+    """Move the log file / change its level at runtime (Settings › Diagnostics)."""
+    root = logging.getLogger(LOGGER_NAME)
+    path = _install_file_handler(root, directory or log_dir(), level)
+    root.info("logging reconfigured: %s (%s)", path or "stderr only", level)
+    return path
+
+
+def current_level() -> str:
+    return str(_state.get("level") or "info")
+
+
+def setup_logging(
+    *, debug: bool = False, directory: Path | None = None, level: str = "info"
+) -> Path | None:
     """Install file + stderr handlers and the exception hooks. Idempotent."""
     root = logging.getLogger(LOGGER_NAME)
     root.setLevel(logging.DEBUG)
@@ -67,26 +120,12 @@ def setup_logging(*, debug: bool = False, directory: Path | None = None) -> Path
     for handler in list(root.handlers):
         root.removeHandler(handler)
 
-    fmt = logging.Formatter("%(asctime)s %(levelname)-8s %(name)s: %(message)s")
     stream = logging.StreamHandler(sys.stderr)
     stream.setLevel(logging.DEBUG if debug else logging.WARNING)
-    stream.setFormatter(fmt)
+    stream.setFormatter(logging.Formatter(_FORMAT))
     root.addHandler(stream)
 
-    path: Path | None = None
-    target_dir = directory or log_dir()
-    try:
-        target_dir.mkdir(parents=True, exist_ok=True)
-        path = target_dir / LOG_FILE_NAME
-        file_handler = RotatingFileHandler(
-            path, maxBytes=_MAX_BYTES, backupCount=_BACKUPS, encoding="utf-8"
-        )
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(fmt)
-        root.addHandler(file_handler)
-    except OSError as exc:  # read-only cache dir: keep going with stderr only
-        root.warning("log file unavailable (%s): %s", target_dir, exc)
-    _state["path"] = path
+    path = _install_file_handler(root, directory or log_dir(), "debug" if debug else level)
 
     if not _state["installed"]:
         _install_hooks()
@@ -116,7 +155,8 @@ def _report(headline: str, details: str) -> None:
     try:
         reporter(headline, details)
     except Exception:  # noqa: BLE001 - the reporter must never recurse into the hook
-        logging.getLogger(LOGGER_NAME).exception("error reporter failed")
+        _state["reporter"] = None
+        logging.getLogger(LOGGER_NAME).exception("error reporter failed; in-window reports off")
 
 
 def _excepthook(exc_type: type[BaseException], exc: BaseException, tb: Any) -> None:

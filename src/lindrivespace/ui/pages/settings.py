@@ -22,9 +22,10 @@ from typing import Any
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk  # noqa: E402
+from gi.repository import Gtk, Pango  # noqa: E402
 
 from lindrivespace import __version__  # noqa: E402
+from lindrivespace.config.layout import Layout  # noqa: E402
 from lindrivespace.config.settings import DEFAULTS  # noqa: E402
 from lindrivespace.config.theme import THEMES, get_theme  # noqa: E402
 from lindrivespace.core.options import DEFAULT_EXCLUDES  # noqa: E402
@@ -46,6 +47,7 @@ class SettingsPage(BasePage):
         self._build_scheduler_group()
         self._build_mounts_group()
         self._build_explorer_group()
+        self._build_diagnostics_group()
         self._build_about_group()
 
     def on_shown(self) -> None:
@@ -556,6 +558,99 @@ class SettingsPage(BasePage):
         if callable(restore):
             restore()
 
+    # ---- Diagnostics (logging) -------------------------------------------
+
+    def _build_diagnostics_group(self) -> None:
+        from lindrivespace import logsetup
+
+        group = PrefGroup("Diagnostics")
+
+        self.log_dir_chooser = Gtk.FileChooserButton(
+            title="Choose the log folder", action=Gtk.FileChooserAction.SELECT_FOLDER
+        )
+        self.log_dir_chooser.set_width_chars(28)
+        self.log_dir_chooser.get_accessible().set_name("Log folder")
+        self.log_dir_chooser.connect("file-set", self._on_log_dir_set)
+        reset_dir = Gtk.Button(label="Default")
+        reset_dir.get_accessible().set_name("Reset log folder to default")
+        reset_dir.connect("clicked", lambda _b: self._set_log_dir(""))
+        dir_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=Layout.spacing.XS)
+        dir_box.pack_start(self.log_dir_chooser, True, True, 0)
+        dir_box.pack_start(reset_dir, False, False, 0)
+        group.add_row(
+            PrefRow(
+                "Log folder",
+                dir_box,
+                f"Default: {logsetup.log_dir()} — rotating file, 1 MB × 5. Applied immediately.",
+            )
+        )
+
+        self.log_level_combo = Gtk.ComboBoxText()
+        for key, label, _value in logsetup.LEVELS:
+            self.log_level_combo.append(key, label)
+        self.log_level_combo.get_accessible().set_name("Log level")
+        self.log_level_combo.connect("changed", self._on_log_level_changed)
+        group.add_row(
+            PrefRow(
+                "Log level",
+                self.log_level_combo,
+                "Debug records every scan step and GTK message; Warnings keeps only problems.",
+            )
+        )
+
+        self.log_path_label = Gtk.Label(label="")
+        self.log_path_label.set_xalign(0.0)
+        self.log_path_label.set_selectable(True)
+        self.log_path_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+        ctx = self.log_path_label.get_style_context()
+        ctx.add_class("mono")
+        ctx.add_class("dim")
+        open_log = Gtk.Button(label="Open log folder")
+        open_log.get_accessible().set_name("Open log folder")
+        open_log.connect("clicked", lambda _b: self.window.open_log_folder())
+        group.add_row(PrefRow("Current log file", open_log))
+        group.add_row(self.log_path_label)
+
+        self.pack_start(group, False, False, 0)
+        self._reload_diagnostics()
+
+    def _reload_diagnostics(self) -> None:
+        from lindrivespace import logsetup
+
+        folder = str(self.settings.get("logging.dir") or "")
+        self._guard = True
+        try:
+            target = folder or str(logsetup.log_dir())
+            if os.path.isdir(target):
+                self.log_dir_chooser.set_current_folder(target)
+            level = str(self.settings.get("logging.level") or "info")
+            self.log_level_combo.set_active_id(
+                level if level in {k for k, _l, _v in logsetup.LEVELS} else "info"
+            )
+        finally:
+            self._guard = False
+        path = logsetup.log_path()
+        self.log_path_label.set_text(str(path) if path else "log file unavailable (stderr only)")
+
+    def _set_log_dir(self, folder: str) -> None:
+        self._persist("logging.dir", folder)
+        self.app.apply_logging_settings()
+        self._reload_diagnostics()
+
+    def _on_log_dir_set(self, chooser: Gtk.FileChooserButton) -> None:
+        if getattr(self, "_guard", False):
+            return
+        folder = chooser.get_filename() or ""
+        self._set_log_dir(folder)
+
+    def _on_log_level_changed(self, combo: Gtk.ComboBoxText) -> None:
+        if getattr(self, "_guard", False):
+            return
+        level = combo.get_active_id() or "info"
+        self._persist("logging.level", level)
+        self.app.apply_logging_settings()
+        self._reload_diagnostics()
+
     # ---- About ---------------------------------------------------------
 
     def _build_about_group(self) -> None:
@@ -576,25 +671,10 @@ class SettingsPage(BasePage):
         ctx.add_class("dim")
         group.add_row(config_path_label)
 
-        from lindrivespace import logsetup
-
-        log_file = logsetup.log_path()
-        log_text = f"Log file: {log_file}" if log_file else f"Log folder: {logsetup.log_dir()}"
-        log_label = Gtk.Label(label=log_text)
-        log_label.set_xalign(0.0)
-        log_label.set_selectable(True)
-        log_ctx = log_label.get_style_context()
-        log_ctx.add_class("mono")
-        log_ctx.add_class("dim")
-        group.add_row(log_label)
-
-        open_log = Gtk.Button(label="Open log folder")
-        open_log.get_accessible().set_name("Open log folder")
-        open_log.connect("clicked", lambda _b: self.window.open_log_folder())
         group.add_row(
             PrefRow(
                 "Diagnostics",
-                open_log,
+                Gtk.Label(label="see the Diagnostics card above"),
                 "Errors and GTK warnings are written to a rotating log (1 MB × 5); "
                 "run with --debug for verbose output.",
             )

@@ -76,6 +76,7 @@ class LinDriveSpaceApp(Gtk.Application):
         self.smoke = smoke
         self.screenshot = screenshot
         self.settings = settings or Settings()
+        self.apply_logging_settings()
         self.theme = get_theme(theme_id or self.settings.get("theme"))
         self.theme_loader = ThemeLoader(css_path=data_path("css", "app.css"))
         self.window: MainWindow | None = None
@@ -183,6 +184,18 @@ class LinDriveSpaceApp(Gtk.Application):
                 self.window.record_scan(path, entry.finished_text)
                 self.record_scan_sample(path, entry.alloc, entry.entries)
                 self.autosave_snapshot(path, entry)
+
+    def apply_logging_settings(self) -> None:
+        """Point the log at the folder/level chosen in Settings › Diagnostics."""
+        if self.debug:
+            return  # --debug keeps everything verbose in the default place
+        folder = str(self.settings.get("logging.dir") or "").strip()
+        level = str(self.settings.get("logging.level") or "info")
+        directory = Path(os.path.expanduser(folder)) if folder else None
+        try:
+            logsetup.reconfigure(directory=directory, level=level)
+        except Exception as exc:  # noqa: BLE001 - logging must never break startup
+            self.log.warning("could not apply logging settings: %s", exc)
 
     KEEP_SNAPSHOTS_PER_PATH = 12
 

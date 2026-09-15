@@ -296,3 +296,9 @@ def test_save_pattern_row_shows_its_entry(page) -> None:  # type: ignore[no-unty
     page._on_pattern_save_cancel(None)
     _pump()
     assert not page.pattern_save_row.get_visible()
+
+
+def test_change_table_colours_growth_red_and_reduction_green(page) -> None:  # type: ignore[no-untyped-def]
+    assert page.change_colour_for(10) == page.theme.danger
+    assert page.change_colour_for(-10) == page.theme.ok
+    assert page.change_colour_for(0) == page.theme.fg_muted

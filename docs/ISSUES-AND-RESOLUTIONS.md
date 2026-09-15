@@ -139,6 +139,19 @@ Legend: **Symptom** what was seen · **Cause** verified root cause · **Fix** wh
 
 ---
 
+### 2.8 Star click on the Overview list raised `ValueError`
+- **Symptom:** every click on the ★ cell showed the error bar; favourites could not be toggled.
+- **Cause:** PyGObject 3.48 returns `(x_offset, width)` from `TreeViewColumn.cell_get_position`;
+  the code unpacked the documented 3-tuple.
+- **Fix:** accept both shapes. **Guard:** Overview list star test.
+
+### 2.9 Error-report storm (2 648 identical tracebacks in two seconds)
+- **Cause:** `report_error` raised inside its own `GLib.idle_add` callback; PyGObject routed that
+  to `sys.excepthook`, which scheduled `report_error` again — an infinite loop that filled all five
+  rotated log files.
+- **Fix:** `report_error` can no longer raise (no-show-all-safe `show_all()`), and
+  `logsetup._report` unregisters a reporter the first time it fails.
+
 ## 3. History, scheduler, collector
 
 ### 3.1 Trend chart x-axis labels overlapped at high point density

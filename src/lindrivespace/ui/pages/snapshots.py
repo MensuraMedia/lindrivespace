@@ -233,6 +233,9 @@ class HistoryPage(BasePage):
             column.set_resizable(True)
             column.set_sort_column_id(sort_id)
             column.set_alignment(align)
+            if title in ("Change", "Difference"):
+                # growth (more space used) in the danger colour, reductions in the ok colour
+                column.set_cell_data_func(renderer, self._change_colour_func)
             self.change_view.append_column(column)
         self.change_store.set_sort_column_id(5, Gtk.SortType.DESCENDING)
 
@@ -570,6 +573,26 @@ class HistoryPage(BasePage):
                 self.change_summary.get_text() + " Nothing moved by more than 1 MB."
             )
         return False
+
+    def change_colour_for(self, delta: int) -> str:
+        """Hex colour for a signed byte difference: red = grew/new, green = shrank/deleted."""
+        if delta > 0:
+            return self.theme.danger
+        if delta < 0:
+            return self.theme.ok
+        return self.theme.fg_muted
+
+    def _change_colour_func(
+        self,
+        _column: Gtk.TreeViewColumn,
+        cell: Gtk.CellRendererText,
+        model: Gtk.TreeModel,
+        it: Gtk.TreeIter,
+        _data: object = None,
+    ) -> None:
+        delta = int(model.get_value(it, 6))
+        cell.set_property("foreground", self.change_colour_for(delta))
+        cell.set_property("weight", 700 if delta > 0 else 400)
 
     def _on_change_row_activated(
         self, view: Gtk.TreeView, tree_path: Gtk.TreePath, _column: Gtk.TreeViewColumn

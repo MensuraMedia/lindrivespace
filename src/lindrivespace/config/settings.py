@@ -20,6 +20,10 @@ DEFAULTS: dict[str, Any] = {
     "theme": DEFAULT_THEME_ID,
     "units": "decimal",  # decimal (GB) | binary (GiB)
     "primary_size": "allocated",  # allocated | apparent
+    "logging": {
+        "dir": "",  # "" = ~/.cache/lindrivespace/logs (or $LINDRIVESPACE_LOG_DIR)
+        "level": "info",  # debug | info | warning
+    },
     "scan": {
         "follow_symlinks": False,
         "cross_mounts": False,

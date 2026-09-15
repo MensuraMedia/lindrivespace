@@ -18,6 +18,7 @@ with Ubuntu orange on the "gray-temperature" palette.
 - Screen mockups: `docs/mockups/lindrivespace-mockups.html` (published https://claude.ai/artifact/NJkL7nHfQys3V6LeYoNGnv),
   scan-strip variants `docs/mockups/scan-strip-mockups.html` (https://claude.ai/artifact/Bgqf9jYMRiiUBK1Wn6fESY)
 - README: `README.md` (features, screens, architecture, install, roadmap)
+- Backlog with evidence: `docs/BACKLOG.md` (click delay, log errors, performance — investigated 2026-09-15)
 - Issues & resolutions: `docs/ISSUES-AND-RESOLUTIONS.md` (every problem met, root cause, fix, guard —
   read before touching GTK rendering, threading or the scan pipeline)
 - Overview view mockups: `docs/mockups/overview-views-mockups.html` (https://claude.ai/artifact/4rPwMZfBBSPyupdxKK4UTF)
@@ -40,7 +41,7 @@ Sidebar: **Overview · Explorer · Favorites · History · Hardware · Glossary 
 | History | done | `core/history.py` HistoryStore (usage + scan samples, `~/.cache/lindrivespace/history.json`), TrendChart with Day/Week/Month/Year/All, First/Latest/Change/Growth tiles, Pattern History bookmarks. Clicking **Change** reveals "Where space changed": folder + file diff (`core/changes.py`) between the newest auto-saved scan snapshot and the oldest inside the period (`~/.cache/lindrivespace/scans/`, 12 kept per root, saved on a worker thread by `app.autosave_snapshot`). Background collector `lindrivespace --collect` + systemd user timer from Settings › Background collection (`services/scheduler.py`). |
 | Hardware | done | Disks and live I/O tables first (styled like the Overview list, sortable), then system, DMI board/firmware, CPU/memory, lspci controllers, drive types, filesystems, notes; every card has a Copy icon; Refresh / Copy report. |
 | Glossary | done | 120 terms in 7 categories, search, category chips, expandable rows with See-also links. |
-| Settings | done | Theme (light = preview), units, primary size, scan defaults, exclusions, hidden fstypes, primary/secondary mountpoints, explorer bold-N / reset columns, auto-scan on startup, About with log path. |
+| Settings | done | Theme (light = preview), units, primary size, scan defaults, exclusions, background collection (scheduler), hidden fstypes, primary/secondary mountpoints, explorer bold-N / reset columns, auto-scan on startup, Diagnostics (log folder + level, open log), About. |
 | Logging & errors | done | `lindrivespace/logsetup.py`: rotating log `~/.cache/lindrivespace/logs/lindrivespace.log` (1 MB × 5), main/thread/GTK-callback exception hooks, GLib warning capture, `--debug`; in-window error bar with Details and Open log. |
 | Privileged scan helper | built, not wired | `services/privilege.py`, `data/bin/lindrivespace-scan-helper`, polkit policy exist and are tested; the context-menu item still prints a TODO. |
 | Packaging | not started | WP13: `debian/`, desktop entry, AppStream metainfo, LICENSE. `run.sh` from a checkout is the only launch path. |
@@ -57,8 +58,8 @@ Sidebar: **Overview · Explorer · Favorites · History · Hardware · Glossary 
 # dev venv (ruff, mypy, pytest) — created once with: python3 -m venv --system-site-packages .venv && .venv/bin/pip install ruff mypy pytest
 .venv/bin/ruff check src tests && .venv/bin/ruff format --check src tests
 .venv/bin/mypy --strict src/lindrivespace/core
-.venv/bin/python -m pytest -q tests/core tests/services            # headless: 251 passed
-DISPLAY=:0 .venv/bin/python -m pytest -q tests/ui tests/models     # needs the X display: 118 passed
+.venv/bin/python -m pytest -q tests/core tests/services            # headless: 252 passed
+DISPLAY=:0 .venv/bin/python -m pytest -q tests/ui tests/models     # needs the X display: 120 passed
 ```
 GTK3 has no offscreen backend: UI tests need `DISPLAY=:0` (or `broadwayd`). `tests/ui/conftest.py`
 holds one session-scoped application window; UI test modules must not build their own

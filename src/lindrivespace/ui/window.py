@@ -165,10 +165,11 @@ class MainWindow(Gtk.ApplicationWindow):
         self._error_details = details
         prefix = f"{self._error_count} errors · " if self._error_count > 1 else ""
         self.error_label.set_text(f"{prefix}{headline}")
-        self.error_bar.show()
-        self.error_label.show()
-        self.error_bar.get_content_area().show_all()
-        self.error_bar.get_action_area().show_all()
+        try:
+            self.error_bar.set_no_show_all(False)
+            self.error_bar.show_all()
+        finally:
+            self.error_bar.set_no_show_all(True)
 
     def report_error_threadsafe(self, headline: str, details: str = "") -> None:
         """Safe to call from any thread (used by logsetup's hooks)."""

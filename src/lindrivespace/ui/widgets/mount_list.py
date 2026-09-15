@@ -1,7 +1,7 @@
 """MountList — the Overview's list view: one sortable row per mount, disks as section rows.
 
 Columns: Mount (with PRIMARY / SECONDARY badge text) · Device · Type · Used · Free ·
-Total · Used % (inline bar) · Scanned · ★. Disks are parent rows of a TreeStore so
+Total · Used % (inline bar) · ★ + Scan/Rescan. Disks are parent rows of a TreeStore so
 sorting by a column keeps mounts under their disk. Double-click / Enter or the
 context menu scans a mount; clicking the star toggles the favourite.
 """
@@ -155,10 +155,9 @@ class MountList(Gtk.ScrolledWindow):
         "free",
         "total",
         "percent",
-        "scanned",
         "actions",
     )
-    HIDEABLE = ("device", "fstype", "used", "free", "total", "percent", "scanned")
+    HIDEABLE = ("device", "fstype", "used", "free", "total", "percent")
 
     def __init__(
         self,
@@ -257,11 +256,6 @@ class MountList(Gtk.ScrolledWindow):
         self.view.append_column(bar_col)
         self._columns["percent"] = bar_col
 
-        scanned_col = self._text_col("Scanned", "scanned", width=126)
-        scanned_col.set_sort_column_id(int(Col.SCANNED))
-        self.view.append_column(scanned_col)
-        self._columns["scanned"] = scanned_col
-
         star_col = Gtk.TreeViewColumn(title="")
         self.star_renderer = Gtk.CellRendererPixbuf()
         self.star_renderer.set_property("xpad", 6)
@@ -289,7 +283,6 @@ class MountList(Gtk.ScrolledWindow):
         "free": "Free",
         "total": "Total",
         "percent": "Used %",
-        "scanned": "Scanned",
         "actions": "Actions",
     }
 
@@ -363,8 +356,12 @@ class MountList(Gtk.ScrolledWindow):
         self._loading = True
         try:
             order = self._setting("columns", list(self.COLUMN_IDS))
-            if isinstance(order, list) and set(order) <= set(self.COLUMN_IDS):
-                self._apply_order([c for c in order if c in self._columns])
+            if isinstance(order, list):
+                known = [
+                    c for c in order if c in self._columns
+                ]  # drop retired ids (e.g. "scanned")
+                if set(known) == set(self.COLUMN_IDS):
+                    self._apply_order(known)
             hidden = self._setting("hidden_columns", [])
             if isinstance(hidden, list):
                 for cid in self.HIDEABLE:
@@ -588,7 +585,11 @@ class MountList(Gtk.ScrolledWindow):
             return False
         mountpoint = str(self.store.get_value(it, Col.KEY))
         if event.button == 1 and column is self.star_column:
-            found, x_off, width = column.cell_get_position(self.star_renderer)
+            pos = column.cell_get_position(self.star_renderer)
+            if len(pos) == 3:
+                found, x_off, width = pos
+            else:  # PyGObject 3.48: (x_offset, width)
+                found, (x_off, width) = True, pos
             # cell_get_position is relative to the column; the cell area gives the column's x.
             rect = view.get_cell_area(path, column)
             local_x = int(event.x) - rect.x

@@ -14,3 +14,5 @@
 - [x] Black page gutters, no-show-all show_all bug, blue menu check glyphs — fixed 2026-09-15 (docs/ISSUES-AND-RESOLUTIONS.md).
 - [ ] Isolate Settings/XDG dirs in the UI test fixture (ISSUES §3.2).
 - [ ] Optional: History page shortcut to Settings › Background collection.
+- [ ] Backlog (docs/BACKLOG.md): A1 button transition 200 ms (one CSS line), A2 Glossary 190 ms show, A3/A4 click-path saves + systemctl, B3 tree-selection assertion, B4 log volume, C1 retained-scan memory (186 MB after /home; /mnt/data 5.1 M entries), C2 parallel scanner, C3 snapshot serialisation in a child process, C4 lsblk off the main thread, D1 XDG isolation in UI tests.
+- [x] Change table colours, Settings › Diagnostics logging, Scanned column removed, star-click ValueError, error-bar storm — done 2026-09-15.
