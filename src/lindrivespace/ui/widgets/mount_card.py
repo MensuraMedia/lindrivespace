@@ -23,7 +23,7 @@ from gi.repository import GLib, GObject, Gtk  # noqa: E402
 from lindrivespace.config.layout import Layout  # noqa: E402
 from lindrivespace.config.theme import ThemeDefinition  # noqa: E402
 from lindrivespace.core.units import format_bytes  # noqa: E402
-from lindrivespace.ui.widgets.ring_gauge import RingGauge  # noqa: E402
+from lindrivespace.ui.widgets.bar_gauge import BarGauge  # noqa: E402
 
 _DIMS = Layout.dimensions
 
@@ -94,10 +94,6 @@ class MountCard(Gtk.Frame):
         outer.set_border_width(0)
         event_box.add(outer)
 
-        self.ring = RingGauge(theme, size=_DIMS.RING_SIZE)
-        self.ring.set_valign(Gtk.Align.CENTER)
-        outer.pack_start(self.ring, False, False, 0)
-
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         body.set_valign(Gtk.Align.CENTER)
         outer.pack_start(body, True, True, 0)
@@ -108,7 +104,12 @@ class MountCard(Gtk.Frame):
         self.name_label = Gtk.Label()
         self.name_label.set_xalign(0.0)
         name_row.pack_start(self.name_label, True, True, 0)
+        self.role_label = Gtk.Label()
+        self.role_label.get_style_context().add_class("badge")
+        self.role_label.set_no_show_all(True)
+        name_row.pack_end(self.role_label, False, False, 0)
         body.pack_start(name_row, False, False, 0)
+        self._role: str | None = None
 
         self.device_label = Gtk.Label()
         self.device_label.set_xalign(0.0)
@@ -120,6 +121,13 @@ class MountCard(Gtk.Frame):
         self.usage_label.set_xalign(0.0)
         self.usage_label.set_line_wrap(True)
         body.pack_start(self.usage_label, False, False, 0)
+
+        # Usage bar (replaces the ring gauge; same colour thresholds).
+        self.gauge = BarGauge(theme)
+        self.gauge.set_margin_top(4)
+        self.gauge.set_margin_bottom(2)
+        body.pack_start(self.gauge, False, False, 0)
+        self.ring = self.gauge  # backwards-compatible name
 
         bottom_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.scanned_label = Gtk.Label()
@@ -144,18 +152,35 @@ class MountCard(Gtk.Frame):
         self.scanned_label.set_text(_scanned_text(data))
         self.scan_button.set_label("Rescan" if data.scanned_at else "Scan")
         self.icon.set_from_icon_name(_icon_name(data.kind), Gtk.IconSize.MENU)
-        self.ring.set_percent(_percent(data))
+        self.gauge.set_percent(_percent(data))
         self._update_button_style()
 
     def set_theme(self, theme: ThemeDefinition) -> None:
         """Swap the active theme (propagated to the ring gauge)."""
         self._theme = theme
-        self.ring.set_theme(theme)
+        self.gauge.set_theme(theme)
 
     def update(self, data: MountCardData) -> None:
         """Replace the card's data and refresh every label/glyph."""
         self._data = data
         self._apply_data()
+
+    def set_role(self, role: str | None) -> None:
+        """Mark the card as the user's "primary" / "secondary" mountpoint (or neither)."""
+        ctx = self.get_style_context()
+        for cls in ("role-primary", "role-secondary"):
+            ctx.remove_class(cls)
+        self._role = role if role in ("primary", "secondary") else None
+        if self._role:
+            ctx.add_class(f"role-{self._role}")
+            self.role_label.set_text(self._role.upper())
+            self.role_label.show()
+        else:
+            self.role_label.hide()
+
+    @property
+    def role(self) -> str | None:
+        return self._role
 
     def set_selected(self, selected: bool) -> None:
         """Toggle the "selected" CSS class and the button's emphasis style."""

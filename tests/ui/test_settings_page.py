@@ -206,3 +206,24 @@ def test_every_switch_spin_combo_entry_has_an_accessible_name(page) -> None:  # 
     for widget in controls:
         name = widget.get_accessible().get_name()
         assert name, f"{widget.get_name()} ({type(widget).__name__}) has no accessible name"
+
+
+def test_primary_secondary_mountpoints(window) -> None:  # type: ignore[no-untyped-def]
+    page = window.pages["settings"]
+    settings = window.app.settings
+    combo = page.role_combos["primary"]
+    assert combo.get_active_id() == ""
+    combo.append("/mnt/data", "/mnt/data")
+    combo.append("/", "/")
+    combo.set_active_id("/mnt/data")
+    assert settings.get("mounts.primary") == "/mnt/data"
+    # the same mountpoint cannot be both roles
+    sec = page.role_combos["secondary"]
+    sec.append("/mnt/data", "/mnt/data")
+    sec.set_active_id("/mnt/data")
+    assert settings.get("mounts.secondary") == "/mnt/data"
+    assert settings.get("mounts.primary") == ""
+    overview = window.pages["overview"]
+    assert overview.mount_roles() == {"/mnt/data": "secondary"}
+    sec.set_active_id("")
+    assert settings.get("mounts.secondary") == ""

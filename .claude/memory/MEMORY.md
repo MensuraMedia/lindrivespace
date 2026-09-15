@@ -7,6 +7,7 @@
 
 ## Changes
 <!-- Add newest first -->
+- [WP9 insight panel](changes/2026-09-15-wp9-insight-panel.md) — collapsible Analysis panel
 - [WP12 settings](changes/2026-09-15-wp12-settings.md) — Settings page, a11y, contrast audit
 - [WP14 favorites](changes/2026-09-14-wp14-favorites.md) — favorites store + page
 - [WP10 actions/snapshots](changes/2026-09-14-wp10-actions-snapshots.md) — export, actions, Snapshots page

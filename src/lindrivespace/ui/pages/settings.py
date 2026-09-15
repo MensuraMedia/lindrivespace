@@ -340,8 +340,53 @@ class SettingsPage(BasePage):
             )
         )
 
+        self.role_combos: dict[str, Gtk.ComboBoxText] = {}
+        self._role_guard = False
+        for role, desc in (
+            ("primary", "Badged and listed first on the Overview (e.g. your system disk)."),
+            ("secondary", "Badged second on the Overview (e.g. a data or backup drive)."),
+        ):
+            combo = Gtk.ComboBoxText()
+            combo.set_size_request(220, -1)
+            self.role_combos[role] = combo
+            self._fill_role_combo(role)
+            combo.connect("changed", self._on_role_changed, role)
+            group.add_row(PrefRow(f"{role.capitalize()} mountpoint", combo, desc))
+
         self.pack_start(group, False, False, 0)
         self.mounts_group = group
+
+    def _fill_role_combo(self, role: str) -> None:
+        combo = self.role_combos[role]
+        current = str(self.settings.get(f"mounts.{role}", "") or "")
+        overview = self.window.pages.get("overview")
+        known = list(getattr(overview, "known_mountpoints", list)())
+        if current and current not in known:
+            known.append(current)
+        self._role_guard = True
+        try:
+            combo.remove_all()
+            combo.append("", "None")
+            for mp in known:
+                combo.append(mp, mp)
+            if not combo.set_active_id(current):
+                combo.set_active(0)
+        finally:
+            self._role_guard = False
+
+    def _on_role_changed(self, combo: Gtk.ComboBoxText, role: str) -> None:
+        if self._role_guard:
+            return
+        value = combo.get_active_id() or ""
+        other = "secondary" if role == "primary" else "primary"
+        if value and self.settings.get(f"mounts.{other}", "") == value:
+            self._persist(f"mounts.{other}", "")  # a mountpoint has one role
+            self._fill_role_combo(other)
+        self._persist(f"mounts.{role}", value)
+        overview = self.window.pages.get("overview")
+        refresh = getattr(overview, "refresh_roles", None)
+        if callable(refresh):
+            refresh()
 
     def _on_hidden_fstypes_committed(self, entry: Gtk.Entry, *_args: object) -> bool:
         values = [t.strip() for t in entry.get_text().split(",") if t.strip()]
@@ -417,6 +462,30 @@ class SettingsPage(BasePage):
         ctx.add_class("dim")
         group.add_row(config_path_label)
 
+        from lindrivespace import logsetup
+
+        log_file = logsetup.log_path()
+        log_text = f"Log file: {log_file}" if log_file else f"Log folder: {logsetup.log_dir()}"
+        log_label = Gtk.Label(label=log_text)
+        log_label.set_xalign(0.0)
+        log_label.set_selectable(True)
+        log_ctx = log_label.get_style_context()
+        log_ctx.add_class("mono")
+        log_ctx.add_class("dim")
+        group.add_row(log_label)
+
+        open_log = Gtk.Button(label="Open log folder")
+        open_log.get_accessible().set_name("Open log folder")
+        open_log.connect("clicked", lambda _b: self.window.open_log_folder())
+        group.add_row(
+            PrefRow(
+                "Diagnostics",
+                open_log,
+                "Errors and GTK warnings are written to a rotating log (1 MB × 5); "
+                "run with --debug for verbose output.",
+            )
+        )
+
         self.pack_start(group, False, False, 0)
         self.about_group = group
 
@@ -445,6 +514,8 @@ class SettingsPage(BasePage):
         self._rebuild_excludes_list()
 
         self.mounts_hidden_switch.set_active(bool(self.settings.get("mounts.show_hidden", False)))
+        for role in ("primary", "secondary"):
+            self._fill_role_combo(role)
         self.hidden_fstypes_entry.set_text(
             ", ".join(self.settings.get("mounts.hidden_fstypes", []) or [])
         )

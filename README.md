@@ -28,7 +28,8 @@ Ubuntu's typeface and colour language.
 
 ### Overview — mounts and partitions
 - Every mounted filesystem as a card, grouped by physical disk (NVMe, SATA, USB, loop), with label,
-  device, filesystem type, used / free / total and a usage ring that turns amber at 85 % and red at 95 %.
+  device, filesystem type, used / free / total and a usage bar that turns amber at 85 % and red at 95 %.
+- Mark a **primary** and a **secondary** mountpoint in Settings › Mounts: those cards are badged and listed first.
 - KPI tiles: total capacity, used, free, and how many mounts have been scanned.
 - Live hot-plug: USB drives appear and disappear as they are attached (udev monitor).
 - Noise hidden by default: snap `squashfs` loops, `tmpfs`, `proc`, `sysfs`, Docker overlays. One chip reveals them.
@@ -40,7 +41,9 @@ Ubuntu's typeface and colour language.
   (`st_blocks × 512`, what `du` reports). Allocated is the default sort and bar basis; one click switches.
 - Hard links counted once; symlinks never followed; mount boundaries respected (crossing is opt-in).
 - Progressive fill: the root row appears immediately and the tree fills as subtrees settle; scanning never blocks the UI.
-- Largest-first sort, bold rows for the top children of each parent, inline percent bars, breadcrumb strip, status bar.
+- Largest-first sort, bold rows for the top children of each parent, inline Share % bars, breadcrumb strip, status bar.
+- **Drill down to files.** Expanding a folder lists its files live (sizes from `lstat`), interleaved with sub-folders in the same sort order, each with its own Share % bar; very wide folders show the 2,000 largest plus a "… N more files" row so totals always add up. Double-click a file to reveal it in the file manager.
+- Columns can be dragged into any order, resized, sorted from their header, and shown or hidden from the header menu or the toolbar's Columns button; the layout is remembered.
 - Denied subtrees (other users' homes, `/var/lib/docker`) are marked with a lock and can be re-scanned as
   administrator through a polkit prompt — the elevated helper is a tiny stdlib-only process, never the GUI.
 - Cancel, pause, rescan a subtree, exclude a folder.
@@ -57,12 +60,16 @@ Ubuntu's typeface and colour language.
 - Snapshots: save a scan and diff it against a later one (grew / shrank / new / deleted).
 
 ### Favorites
-- Star folders or files from the Explorer; the Favorites page lists them and opens each one's space view in a click.
+- Star folders or files from the Explorer (toolbar star, Ctrl+D or the context menu); the Favorites page lists them and opens each one's space view in a click. A file favourite opens its folder with the file selected.
 
 ### Settings
 - Theme: Gray-Temperature Dark (default); Light and System-follow planned for v1.1.
 - Units: decimal GB (default) or binary GiB.
-- Scan defaults, exclusion list, hidden-filesystem rules.
+- Scan defaults, exclusion list, hidden-filesystem rules, primary / secondary mountpoints.
+
+### Diagnostics
+- Every uncaught error (main loop, worker threads, GTK callbacks) and every GTK warning is written to a rotating log under `~/.cache/lindrivespace/logs/` and shown in an in-window error bar with a details dialog.
+- `lindrivespace --debug` prints verbose logging to the terminal; Settings › About shows the log location and opens the folder.
 
 ## Screens
 
@@ -105,7 +112,7 @@ Tokens, type ramp and widget states shared by every screen. Names match `config/
 | **Surfaces** | `#495060` canvas · `#343946` surface · `#2d323d` tree body · `#21252f` wells · `#1b1e29` selection |
 | **Accent** | Ubuntu orange `#e95420` (bars, active nav, rings), `#fd5c01` hover; aubergine `#772953` and warm grey `#aea79f` as secondary series |
 | **Semantic** | green `#3fb950` free, amber `#f5a623` ≥ 85 %, red `#e0362c` ≥ 95 % / denied |
-| **Metrics** | 150 px sidebar, 24 px tree rows, 12 × 96 px percent bars, 64 px rings, 4 px base unit |
+| **Metrics** | 150 px sidebar, 24 px tree rows, 12 × 96 px percent bars, 12 px usage bars, 4 px base unit |
 
 The palette is sampled from the gray-temperature kit in
 [universal-instruction-set/universal-themes](https://github.com/MensuraMedia/universal-instruction-set/tree/main/universal-themes/image-reference)
@@ -171,6 +178,7 @@ python3 -m venv --system-site-packages .venv && .venv/bin/pip install ruff mypy 
 DISPLAY=:0 .venv/bin/python -m pytest -q tests/ui tests/models # needs a display (or broadwayd)
 python3 -m lindrivespace --smoke                               # builds the window and exits
 python3 -m lindrivespace --screenshot /tmp/lds.png             # renders the window to PNG
+python3 -m lindrivespace --debug                               # verbose logging on stderr
 ```
 
 The project is governed by the

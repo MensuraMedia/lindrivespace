@@ -193,3 +193,17 @@ def test_kpi_tile_set_value_updates_labels() -> None:
     tile.set_value("1.71")
     assert tile.value_label.get_text() == "1.71"
     assert tile.unit_label.get_text() == "TB"  # unchanged when omitted
+
+
+def test_mount_card_role_badge() -> None:
+    from lindrivespace.config.theme import GRAY_TEMPERATURE_DARK
+    from lindrivespace.ui.widgets import MountCard, MountCardData
+
+    data = MountCardData("/", "nvme0n1p2", "ext4", "/", 10, 100, None, "nvme")
+    card = MountCard(GRAY_TEMPERATURE_DARK, data)
+    card.set_role("primary")
+    assert card.role == "primary"
+    assert card.get_style_context().has_class("role-primary")
+    assert card.role_label.get_text() == "PRIMARY"
+    card.set_role(None)
+    assert card.role is None and not card.get_style_context().has_class("role-primary")

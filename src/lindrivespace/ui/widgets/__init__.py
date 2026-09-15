@@ -8,6 +8,7 @@ hex colour. Metrics come from ``lindrivespace.config.layout.Layout.dimensions``.
 
 from __future__ import annotations
 
+from lindrivespace.ui.widgets.bar_gauge import BarGauge
 from lindrivespace.ui.widgets.kpi_tile import KpiTile
 from lindrivespace.ui.widgets.mount_card import MountCard, MountCardData
 from lindrivespace.ui.widgets.percent_bar_renderer import PercentBarRenderer
@@ -18,6 +19,7 @@ __all__ = [
     "MountCard",
     "MountCardData",
     "PercentBarRenderer",
+    "BarGauge",
     "RingGauge",
     "colour_token_for_percent",
 ]

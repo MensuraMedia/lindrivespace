@@ -11,9 +11,10 @@ from typing import TYPE_CHECKING
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk  # noqa: E402
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from lindrivespace import APP_NAME  # noqa: E402
+from lindrivespace import APP_NAME, logsetup  # noqa: E402
 from lindrivespace.config.layout import Layout  # noqa: E402
 from lindrivespace.ui.pages import DEFAULT_PAGE, PAGES, PageSpec  # noqa: E402
 from lindrivespace.ui.pages.base import BasePage  # noqa: E402
@@ -85,8 +86,12 @@ class MainWindow(Gtk.ApplicationWindow):
     # ---- body -------------------------------------------------------------
 
     def _build_body(self) -> None:
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.add(outer)
+        self._build_error_bar()
+        outer.pack_start(self.error_bar, False, False, 0)
         body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
-        self.add(body)
+        outer.pack_start(body, True, True, 0)
 
         self.sidebar = Sidebar(PAGES)
         self.sidebar.connect("page-changed", lambda _sb, pid: self.show_page(pid))
@@ -113,6 +118,86 @@ class MainWindow(Gtk.ApplicationWindow):
             scrolled.add(page)
             child = scrolled
         self.stack.add_named(child, spec.id)
+
+    # ---- error reporting --------------------------------------------------
+
+    def _build_error_bar(self) -> None:
+        bar = Gtk.InfoBar()
+        bar.set_message_type(Gtk.MessageType.ERROR)
+        bar.set_show_close_button(True)
+        bar.set_no_show_all(True)
+        bar.get_style_context().add_class("error-bar")
+        self.error_label = Gtk.Label(label="")
+        self.error_label.set_xalign(0.0)
+        self.error_label.set_line_wrap(True)
+        self.error_label.set_selectable(True)
+        bar.get_content_area().pack_start(self.error_label, True, True, 0)
+        bar.add_button("Details…", 1)
+        bar.add_button("Open log", 2)
+        bar.connect("response", self._on_error_bar_response)
+        self.error_bar = bar
+        self._error_details = ""
+        self._error_count = 0
+
+    def report_error(self, headline: str, details: str = "") -> None:
+        """Show a dismissable error bar (main thread only)."""
+        self._error_count += 1
+        self._error_details = details
+        prefix = f"{self._error_count} errors · " if self._error_count > 1 else ""
+        self.error_label.set_text(f"{prefix}{headline}")
+        self.error_bar.show()
+        self.error_label.show()
+        self.error_bar.get_content_area().show_all()
+        self.error_bar.get_action_area().show_all()
+
+    def report_error_threadsafe(self, headline: str, details: str = "") -> None:
+        """Safe to call from any thread (used by logsetup's hooks)."""
+        GLib.idle_add(self.report_error, headline, details)
+
+    def _on_error_bar_response(self, bar: Gtk.InfoBar, response: int) -> None:
+        if response == 1:
+            self._show_error_details()
+        elif response == 2:
+            self.open_log_folder()
+        else:
+            bar.hide()
+            self._error_count = 0
+
+    def _show_error_details(self) -> None:
+        dialog = Gtk.Dialog(title="Error details", transient_for=self, modal=True)
+        dialog.set_default_size(720, 420)
+        dialog.add_button("Copy", 1)
+        dialog.add_button("Close", Gtk.ResponseType.CLOSE)
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        view = Gtk.TextView()
+        view.set_editable(False)
+        view.set_monospace(True)
+        text = self._error_details or self.error_label.get_text()
+        log_file = logsetup.log_path()
+        if log_file is not None:
+            text += f"\n\nFull log: {log_file}"
+        view.get_buffer().set_text(text)
+        scrolled.add(view)
+        dialog.get_content_area().pack_start(scrolled, True, True, 0)
+        dialog.show_all()
+
+        def on_response(d: Gtk.Dialog, response: int) -> None:
+            if response == 1:
+                clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+                clipboard.set_text(text, -1)
+                return
+            d.destroy()
+
+        dialog.connect("response", on_response)
+
+    def open_log_folder(self) -> None:
+        log_file = logsetup.log_path()
+        folder = str(log_file.parent) if log_file is not None else str(logsetup.log_dir())
+        try:
+            Gio.AppInfo.launch_default_for_uri(GLib.filename_to_uri(folder, None), None)
+        except GLib.Error as exc:
+            logsetup.get_logger("window").warning("could not open log folder: %s", exc)
 
     # ---- navigation -------------------------------------------------------
 
@@ -157,5 +242,5 @@ class MainWindow(Gtk.ApplicationWindow):
         try:
             self.app.settings.save()
         except OSError as exc:
-            print(f"could not save settings: {exc}")
+            logsetup.get_logger("window").warning("could not save settings: %s", exc)
         return False

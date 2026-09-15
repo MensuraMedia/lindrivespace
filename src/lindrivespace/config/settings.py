@@ -43,6 +43,9 @@ DEFAULTS: dict[str, Any] = {
             "autofs",
         ],
         "show_hidden": False,
+        # Mountpoints the user cares about most; badged and listed first on the Overview.
+        "primary": "",
+        "secondary": "",
     },
     "window": {"width": 1200, "height": 800, "maximized": False, "panel_visible": True},
     # Favourite folders/files: [{"path": str, "label": str, "added": "YYYY-MM-DD HH:MM"}]

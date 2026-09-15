@@ -136,12 +136,24 @@ class OverviewPage(BasePage):
         self._mounts_by_mountpoint = {}
 
         show_hidden = self.show_hidden_check.get_active()
+        roles = self.mount_roles()
+        rank = {"primary": 0, "secondary": 1}
+
+        def mount_rank(m: MountInfo) -> tuple[int, str]:
+            return (rank.get(roles.get(m.mountpoint, ""), 2), m.mountpoint)
+
+        groups: list[tuple[int, DiskInfo, list[MountInfo]]] = []
         for disk in self.model.disks:
             if not self.model.is_visible_disk(disk, show_hidden=show_hidden):
                 continue
             mounts = [m for m in disk.mounts if self.model.is_visible(m, show_hidden=show_hidden)]
             if not mounts:
                 continue
+            mounts.sort(key=mount_rank)
+            groups.append((min(mount_rank(m)[0] for m in mounts), disk, mounts))
+        # Disks holding the primary / secondary mountpoint come first; stable otherwise.
+        groups.sort(key=lambda g: g[0])
+        for _r, disk, mounts in groups:
             self.groups_box.pack_start(self._build_disk_group(disk, mounts), False, False, 0)
         self.groups_box.show_all()
 
@@ -193,11 +205,34 @@ class OverviewPage(BasePage):
         # the default window width, matching the Direction B mockup, instead
         # of FlowBox dropping to two wide columns. Not a mount_card.py edit.
         card.usage_label.set_max_width_chars(20)
+        card.set_role(self.mount_roles().get(mount.mountpoint))
         card.connect("scan-requested", self._on_card_scan_requested)
         card.connect("selected", self._on_card_selected)
         self._cards[mount.mountpoint] = card
         self._mounts_by_mountpoint[mount.mountpoint] = mount
         return card
+
+    # ---- mount roles (Settings › Mounts: primary / secondary) ---------------
+
+    def mount_roles(self) -> dict[str, str]:
+        """mountpoint -> "primary" | "secondary" from settings (empty values ignored)."""
+        roles: dict[str, str] = {}
+        for role in ("primary", "secondary"):
+            mp = str(self.settings.get(f"mounts.{role}", "") or "")
+            if mp and mp not in roles:
+                roles[mp] = role
+        return roles
+
+    def known_mountpoints(self) -> list[str]:
+        """Visible mountpoints for the Settings selectors (sorted)."""
+        return sorted(
+            m.mountpoint for m in self.model.mounts if self.model.is_visible(m, show_hidden=False)
+        )
+
+    def refresh_roles(self) -> None:
+        """Re-badge and re-order cards after the Settings page changed the roles."""
+        if self._cards:
+            self._rebuild_groups()
 
     # ---- signal handlers ----------------------------------------------------
 

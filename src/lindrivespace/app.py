@@ -19,7 +19,7 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from lindrivespace import APP_ID, APP_NAME, __version__  # noqa: E402
+from lindrivespace import APP_ID, APP_NAME, __version__, logsetup  # noqa: E402
 from lindrivespace.config.settings import Settings  # noqa: E402
 from lindrivespace.config.theme import get_theme  # noqa: E402
 from lindrivespace.ui.theme_loader import ThemeLoader  # noqa: E402
@@ -54,11 +54,14 @@ class LinDriveSpaceApp(Gtk.Application):
         screenshot: str | None = None,
         theme_id: str | None = None,
         settings: Settings | None = None,
+        debug: bool = False,
     ) -> None:
         flags = Gio.ApplicationFlags.HANDLES_OPEN
         if smoke or screenshot:
             flags |= Gio.ApplicationFlags.NON_UNIQUE
         super().__init__(application_id=APP_ID, flags=flags)
+        self.debug = debug
+        self.log = logsetup.get_logger("app")
         self.open_paths = list(open_paths or [])
         self.smoke = smoke
         self.screenshot = screenshot
@@ -81,6 +84,8 @@ class LinDriveSpaceApp(Gtk.Application):
         window = self.build_window()
         window.show_all()
         window.present()
+        # Uncaught errors anywhere (main loop callbacks, threads) surface in the window.
+        logsetup.register_error_reporter(window.report_error_threadsafe)
         if self.open_paths:
             window.request_scan(self.open_paths[0])
         if self.screenshot:
@@ -118,7 +123,7 @@ class LinDriveSpaceApp(Gtk.Application):
         width, height = gdk_window.get_width(), gdk_window.get_height()
         pixbuf = Gdk.pixbuf_get_from_window(gdk_window, 0, 0, width, height)
         if pixbuf is None:
-            print("screenshot failed: could not read window pixels", file=sys.stderr)
+            self.log.error("screenshot failed: could not read window pixels")
             self.quit()
             return False
         pixbuf.savev(path, "png", [], [])
@@ -136,17 +141,22 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--smoke", action="store_true", help="build the window, then exit")
     parser.add_argument("--screenshot", metavar="PNG", help="render the window to PNG, then exit")
     parser.add_argument("--theme", help="theme id (gray-temperature-dark | gray-temperature-light)")
+    parser.add_argument("--debug", action="store_true", help="verbose logging on stderr")
     parser.add_argument("--version", action="version", version=f"{APP_NAME} {__version__}")
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    log_file = logsetup.setup_logging(debug=args.debug)
+    if args.debug and log_file is not None:
+        print(f"log file: {log_file}", file=sys.stderr)
     app = LinDriveSpaceApp(
         open_paths=[os.path.abspath(p) for p in args.paths],
         smoke=args.smoke,
         screenshot=args.screenshot,
         theme_id=args.theme,
+        debug=args.debug,
     )
     # GTK must not see our options: pass only argv[0].
     return int(app.run([sys.argv[0]]))

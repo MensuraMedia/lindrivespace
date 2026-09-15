@@ -337,3 +337,40 @@ progressbar progress {
 progressbar.header-progress trough {
   min-width: 120px;
 }
+
+/* ---- mount roles (Settings › Mounts) ------------------------------------ */
+.card.role-primary {
+  border: 1px solid @accent;
+}
+.card.role-secondary {
+  border: 1px solid @warm_grey;
+}
+label.badge {
+  background-color: @bg_sunken;
+  border: 1px solid @line;
+  border-radius: 3px;
+  color: @fg_muted;
+  font-size: 7.5pt;
+  font-weight: 500;
+  letter-spacing: 1px;
+  padding: 1px 6px;
+}
+.card.role-primary label.badge {
+  border-color: @accent;
+  color: @accent;
+}
+.card.role-secondary label.badge {
+  border-color: @warm_grey;
+  color: @warm_grey;
+}
+
+/* ---- error bar ------------------------------------------------------------ */
+infobar.error-bar,
+infobar.error-bar > revealer > box {
+  background-color: @bg_deep;
+  border-bottom: 2px solid @danger;
+  color: @fg;
+}
+infobar.error-bar label {
+  color: @fg;
+}
