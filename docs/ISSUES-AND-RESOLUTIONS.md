@@ -166,6 +166,10 @@ Legend: **Symptom** what was seen · **Cause** verified root cause · **Fix** wh
 - **Fix:** `gc.freeze()` during/after scans; trees dropped by breaking cycles in `reset()`.
   **Guard:** `test_reset_breaks_parent_child_cycles`; `gc.collect()` after freeze measured 0 ms.
 
+### 2.10–2.12 result
+Same walkthrough after the fixes: 1 stall > 150 ms (was 105), slowest click 53 ms (was 272),
+593 MB resident with three trees retained (was 1 525 MB). Table in `docs/BACKLOG.md` §E.
+
 ### 2.12 Largest-files ring = two thirds of tree memory and 2.5× scan time
 - **Fix:** `ScanOptions.top_min_bytes` (64 KB default, Settings › Scanning). /home: 86 → 36 MB,
   ring 232 644 → 22 753 entries; 2.6 % of bytes leave the analysis estimate.

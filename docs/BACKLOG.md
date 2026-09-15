@@ -67,5 +67,15 @@ unavailable, 105 stalls > 150 ms (max 1.8 s) during the walkthrough. Three cause
 | E4 | **[fixed 2026-09-15]** Glossary first show 270 ms; ~100 ms on later shows. 120 `ListBoxRow`s each with three wrapped labels and a `Revealer` body. | Profile: time is inside `stack.set_visible_child_name` (GTK size allocation), not Python. | Build the revealer body on first expand only; create rows for the visible category lazily. | S |
 | E5 | **[fixed 2026-09-15]** Button press feedback fades over 200 ms (theme transition) — see A1. | Mint-Y gtk.css. | `button { transition: none }` in `app.css`. | XS |
 
+**After the fixes (same scripts, 2026-09-15 evening):**
+
+| Measure | Before | After |
+|---|---|---|
+| Main-loop stalls > 150 ms during the click-through | 105 (max 1.8 s) | 1 (220 ms) |
+| Slowest click (handler + first paint) | Glossary 272 ms | Glossary 53 ms |
+| Resident memory after the walkthrough (/, /home, /mnt/data retained, History diff loaded) | 1 525 MB | 593 MB |
+| Scan-only run: main-thread stall samples > 120 ms | 7 (max 580 ms, in the drain) | 1 (232 ms, idle wait) |
+| Display test suite | 15 s | 8 s |
+
 Not causes (ruled out by measurement): scheduler `systemctl` calls (12 ms even under disk load),
 settings saves (2 ms), the 16 ms drain budget (p95 6 ms during scans), `lsblk` refresh (14 ms).
