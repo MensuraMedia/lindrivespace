@@ -216,8 +216,8 @@
 <div class="wrap">
   <div class="intro">
   <div class="eyebrow">MensuraMedia · lindrivespace · GTK 3 / Python · Linux Mint 22.3</div>
-  <h1><b>LinDriveSpace</b> design directions</h1>
-  <p class="lede">Four directions for the mount, partition, folder and file size explorer, plus the shared component sheet. All four sit on the gray‑temperature surfaces with Ubuntu type and a single Ubuntu‑orange accent; they differ in what the first screen is for and how dense it is. Sample figures come from this machine's real mount layout.</p>
+  <h1><b>LinDriveSpace</b> screens</h1>
+  <p class="lede">The app's screens — Overview, Explorer and Analysis (Explorer with the collapsible insight panel) — plus the shared component sheet, on the gray‑temperature surfaces with Ubuntu type and a single Ubuntu‑orange accent. The soft‑depth card variant was explored and dropped. Sample figures come from this machine's real mount layout.</p>
   <div class="chips">
     <span class="chip"><b>nvme0n1p2</b> ext4 / 100 GB</span>
     <span class="chip"><b>nvme0n1p3</b> ext4 /home 1.7 TB</span>
@@ -230,7 +230,7 @@
   <!-- ============ A ============ -->
   <section class="board" id="dirA">
     <div class="board-head">
-      <span class="tag">Direction A</span><h2>Classic Tree‑Table</h2>
+      <span class="tag">Explorer</span><h2>Explorer — tree‑table</h2>
       <p><b>Closest to the reference.</b> The Explorer is the whole app: one dense tree‑table with size, allocated, files, folders, percent‑of‑parent bars and modified date, a breadcrumb strip above it and scan progress in the header. Mounts live on a secondary Overview page. Motivation: zero learning curve for TreeSize / WizTree users. Trade‑off: mount health is a page away, and the table is the only visual.</p>
     </div>
     <div class="fit"><div class="app" id="appA"></div></div>
@@ -239,7 +239,7 @@
   <!-- ============ B ============ -->
   <section class="board" id="dirB">
     <div class="board-head">
-      <span class="tag">Direction B</span><h2>Overview Dashboard</h2>
+      <span class="tag">Overview</span><h2>Overview — mounts dashboard</h2>
       <p><b>Mounts first, then drill in.</b> The first screen is a summary: four KPI tiles, then every mount as a card grouped by physical disk with a usage ring, used/free, and a Scan button. Below, the last scans. The tree‑table from Direction A opens on Scan. Motivation: answers "which disk is full?" before any scan runs, and shows hot‑plugged USB drives as they arrive. Trade‑off: two clicks to the tree.</p>
     </div>
     <div class="fit"><div class="app" id="appB"></div></div>
@@ -248,7 +248,7 @@
   <!-- ============ C ============ -->
   <section class="board" id="dirC">
     <div class="board-head">
-      <span class="tag">Direction C</span><h2>Gray‑Temperature Cards</h2>
+      <span class="tag">Not built</span><h2>Gray‑temperature cards (dropped)</h2>
       <p><b>The UI‑kit reference, literally.</b> Soft raised cards and sunken wells, a large dial for the selected mount, round mode buttons (allocated vs apparent, hidden files, follow links, cross mounts) and the tree in a recessed well. Motivation: strongest visual identity, matches the kit image. Trade‑off: neumorphic depth costs vertical space and has to be drawn with Cairo, so rows stay flat inside the well.</p>
     </div>
     <div class="fit"><div class="app" id="appC"></div></div>
@@ -257,7 +257,7 @@
   <!-- ============ D ============ -->
   <section class="board" id="dirD">
     <div class="board-head">
-      <span class="tag">Direction D</span><h2>Analyst Split</h2>
+      <span class="tag">Analysis</span><h2>Analysis — Explorer with insight panel</h2>
       <p><b>Tree plus insight panel.</b> The tree‑table keeps the left 70 %; a docked panel on the right shows a squarified treemap of the selected row, the largest files inside it, and an age histogram of allocated bytes. Ubuntu Mono carries paths and raw byte values. Motivation: the treemap makes the 80/20 obvious at a glance and the top‑files list is where deletions actually happen. Trade‑off: the tree loses two columns of width at 1200 px; the panel collapses below 1100 px.</p>
     </div>
     <div class="fit"><div class="app" id="appD"></div></div>

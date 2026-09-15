@@ -4,7 +4,7 @@
 See every mount and partition at a glance, then drill into folders and files to find out exactly
 what is eating your disk — TreeSize / WizTree style, with Linux-correct numbers.
 
-![Overview dashboard — Direction B](docs/mockups/images/direction-b-overview-dashboard.png)
+![Overview](docs/mockups/images/overview.png)
 
 > Status: **in build** (2026-09). Concept, technical design and mockups are complete and approved;
 > the code is being built work-package by work-package. See [Roadmap](#roadmap).
@@ -45,7 +45,7 @@ Ubuntu's typeface and colour language.
   administrator through a polkit prompt — the elevated helper is a tiny stdlib-only process, never the GUI.
 - Cancel, pause, rescan a subtree, exclude a folder.
 
-### Insight panel
+### Insight panel (Analysis view, collapsible)
 - **Treemap** (squarified) of the selected row; click to select, double-click to zoom.
 - **Top files** inside the selection with path, size and modified date.
 - **File types** grouped by class (video, image, archive, package cache, log, …).
@@ -56,6 +56,9 @@ Ubuntu's typeface and colour language.
 - Export the tree as CSV or JSON; export the treemap as PNG.
 - Snapshots: save a scan and diff it against a later one (grew / shrank / new / deleted).
 
+### Favorites
+- Star folders or files from the Explorer; the Favorites page lists them and opens each one's space view in a click.
+
 ### Settings
 - Theme: Gray-Temperature Dark (default); Light and System-follow planned for v1.1.
 - Units: decimal GB (default) or binary GiB.
@@ -63,35 +66,34 @@ Ubuntu's typeface and colour language.
 
 ## Screens
 
-The mockups below are the approved design reference. They are static HTML renders
+The renders below are the approved design reference. They are static HTML mockups
 (`docs/mockups/lindrivespace-mockups.html`), captured at the app's default 1180 × 720 window,
-using this machine's real mount layout as sample data. The build follows **Direction B as the first
-screen with Direction D's insight panel inside the Explorer**; A's tree-table is the Explorer core in every
-direction, and C's soft depth is used only on mount cards and rings.
+using this machine's real mount layout as sample data. The build follows them screen for screen.
 
-### Direction B — Overview Dashboard (first screen)
-Mounts first, then drill in. KPI tiles, mount cards grouped by disk, recent scans.
+### Overview
+The first screen. KPI tiles, every mount as a flat card grouped by physical disk, recent scans.
 
-![Direction B — Overview Dashboard](docs/mockups/images/direction-b-overview-dashboard.png)
+![Overview](docs/mockups/images/overview.png)
 
-### Direction D — Analyst Split (Explorer with insight panel)
-Tree-table on the left; treemap, largest files and age histogram docked on the right.
+### Explorer
+The tree-table: Name · Size · Allocated · Files · Folders · % of Parent · Modified. Columns can be
+dragged into any order, resized, sorted by clicking their header, and shown or hidden from the
+header's context menu; the layout is remembered.
 
-![Direction D — Analyst Split](docs/mockups/images/direction-d-analyst-split.png)
+![Explorer](docs/mockups/images/explorer.png)
 
-### Direction A — Classic Tree-Table
-The reference layout, kept as the Explorer's default when the insight panel is collapsed.
+### Analysis
+The Explorer with its insight panel open on the right: treemap, largest files, file types and an
+age histogram for the selected folder. The panel collapses with the toolbar button or F9.
 
-![Direction A — Classic Tree-Table](docs/mockups/images/direction-a-classic-tree-table.png)
+![Analysis](docs/mockups/images/analysis.png)
 
-### Direction C — Gray-Temperature Cards
-The UI-kit reference taken literally: raised cards, sunken wells, a large dial, round mode buttons.
-Its card and ring treatment is reused on the Overview page.
-
-![Direction C — Gray-Temperature Cards](docs/mockups/images/direction-c-gray-temperature-cards.png)
+### Favorites
+Star any folder or file from the Explorer (context menu or Ctrl+D). The Favorites page lists them;
+clicking one opens the Explorer scanning just that item, with the insight panel ready.
 
 ### Component sheet
-Tokens, type ramp and widget states shared by every screen. Names match `config/theme.py` / `tokens.css`.
+Tokens, type ramp and widget states shared by every screen. Names match `config/theme.py`.
 
 ![Component sheet](docs/mockups/images/component-sheet.png)
 
