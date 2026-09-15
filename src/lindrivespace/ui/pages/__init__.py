@@ -53,6 +53,18 @@ def _snapshots(window: MainWindow) -> BasePage:
     return SnapshotsPage(window)
 
 
+def _hardware(window: MainWindow) -> BasePage:
+    from lindrivespace.ui.pages.hardware import HardwarePage
+
+    return HardwarePage(window)
+
+
+def _glossary(window: MainWindow) -> BasePage:
+    from lindrivespace.ui.pages.glossary import GlossaryPage
+
+    return GlossaryPage(window)
+
+
 def _settings(window: MainWindow) -> BasePage:
     from lindrivespace.ui.pages.settings import SettingsPage
 
@@ -64,6 +76,8 @@ PAGES: list[PageSpec] = [
     PageSpec("explorer", "Explorer", "view-list-symbolic", _explorer, scrolled=False),
     PageSpec("favorites", "Favorites", "starred-symbolic", _favorites),
     PageSpec("snapshots", "Snapshots", "document-save-symbolic", _snapshots),
+    PageSpec("hardware", "Hardware", "computer-symbolic", _hardware),
+    PageSpec("glossary", "Glossary", "accessories-dictionary-symbolic", _glossary, scrolled=False),
     PageSpec("settings", "Settings", "emblem-system-symbolic", _settings, bottom=True),
 ]
 
