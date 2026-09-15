@@ -54,6 +54,7 @@ def test_export_csv_row_count_and_percent(tmp_path: Path) -> None:
     assert int(by_name["dirA"]["alloc"]) == 500_000 + 200_000 + 100_000
     expected_pct = round((800_000 * 100.0) / root.alloc, 2)
     assert float(by_name["dirA"]["percent_of_parent"]) == expected_pct
+    assert 0.0 < float(by_name["dirA"]["share_of_root"]) <= 100.0  # share of the scan root
 
     assert by_name["root"]["path"] == "."
     assert by_name["dirA"]["path"] == "dirA"

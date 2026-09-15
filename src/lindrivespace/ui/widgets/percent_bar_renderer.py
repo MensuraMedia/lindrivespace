@@ -76,8 +76,12 @@ class PercentBarRenderer(Gtk.CellRenderer):
         theme = self._theme
         pct = max(0.0, min(100.0, self.percent))
 
+        # Never paint outside the cell: a narrowed column shrinks the bar instead.
+        cr.save()
+        cr.rectangle(cell_area.x, cell_area.y, cell_area.width, cell_area.height)
+        cr.clip()
         bar_height = _DIMS.BAR_HEIGHT
-        bar_width = max(_DIMS.BAR_WIDTH, cell_area.width - 2 * _PADDING)
+        bar_width = max(8.0, cell_area.width - 2 * _PADDING)
         x = cell_area.x + (cell_area.width - bar_width) / 2
         y = cell_area.y + (cell_area.height - bar_height) / 2
         radius = _DIMS.BAR_RADIUS
@@ -112,3 +116,4 @@ class PercentBarRenderer(Gtk.CellRenderer):
         cr.set_source_rgb(*theme.rgb("fg"))
         cr.move_to(text_x, text_y)
         PangoCairo.show_layout(cr, layout)
+        cr.restore()

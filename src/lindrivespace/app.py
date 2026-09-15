@@ -266,7 +266,16 @@ class LinDriveSpaceApp(Gtk.Application):
             Gtk.IconTheme.get_default().append_search_path(str(icon_dir))
 
     def do_activate(self) -> None:
-        window = self.build_window()
+        try:
+            window = self.build_window()
+        except Exception:
+            # A window that cannot be built must never leave a --smoke / --screenshot run
+            # hanging in the main loop: log it and exit non-zero.
+            self.log.exception("could not build the main window")
+            if self.smoke or self.screenshot:
+                self.quit()
+                raise SystemExit(3) from None
+            raise
         window.show_all()
         window.present()
         # Uncaught errors anywhere (main loop callbacks, threads) surface in the window.

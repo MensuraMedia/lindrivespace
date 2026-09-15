@@ -173,14 +173,32 @@ class FsNode:
         return d
 
     def percent_of_parent(self, allocated: bool = True) -> float:
-        """Share of the parent's total, 0–100. The root reports 100."""
+        """Share of the parent's total in percent. The root reports 100.
+
+        Not clamped: a value above 100 means the numbers disagree (e.g. a live
+        listing against a finished scan) and the UI should show that, not hide it.
+        """
         if self.parent is None:
             return 100.0
         total = self.parent.alloc if allocated else self.parent.size
         own = self.alloc if allocated else self.size
         if total <= 0:
             return 0.0
-        return min(100.0, own * 100.0 / total)
+        return own * 100.0 / total
+
+    def share_of(self, ancestor: FsNode | None, allocated: bool = True) -> float:
+        """Share of ``ancestor``'s total in percent (the scan root by default).
+
+        One denominator for every row on screen, so a bigger folder always
+        gets a longer bar than a smaller one wherever it sits in the tree.
+        """
+        if ancestor is None:
+            return 100.0
+        total = ancestor.alloc if allocated else ancestor.size
+        own = self.alloc if allocated else self.size
+        if total <= 0:
+            return 0.0
+        return own * 100.0 / total
 
     def walk(self) -> Iterator[FsNode]:
         """Pre-order traversal, iterative."""

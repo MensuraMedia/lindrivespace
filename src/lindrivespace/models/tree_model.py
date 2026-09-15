@@ -64,12 +64,23 @@ DISPLAY_KINDS = (
     "files",
     "dirs",
     "percent",
+    "share",
     "modified",
     "owner",
     "type",
     "icon",
 )
-SORT_COLUMNS = ("name", "size", "alloc", "files", "dirs", "percent", "modified")
+SORT_COLUMNS = (
+    "name",
+    "size",
+    "alloc",
+    "files",
+    "dirs",
+    "percent",
+    "of_parent",
+    "share",
+    "modified",
+)
 
 WEIGHT_NORMAL = 400
 WEIGHT_MEDIUM = 500
@@ -93,7 +104,7 @@ class FileRow:
     ranking and display code need no special cases.
     """
 
-    __slots__ = ("id", "name", "parent", "size", "alloc", "mtime", "flags", "more_count")
+    __slots__ = ("id", "name", "parent", "size", "alloc", "mtime", "flags", "more_count", "nlink")
     files = 0
     dirs = 0
     denied = False
@@ -110,6 +121,7 @@ class FileRow:
         mtime: float,
         flags: int = 0,
         more_count: int = 0,
+        nlink: int = 1,
     ) -> None:
         self.id = row_id
         self.name = name
@@ -119,6 +131,7 @@ class FileRow:
         self.mtime = mtime
         self.flags = flags
         self.more_count = more_count  # > 0 on the summary row
+        self.nlink = nlink  # hard-link count; sizes are attributed 1/nlink (see list_files)
 
     @property
     def mtime_max(self) -> float:
@@ -137,7 +150,16 @@ class FileRow:
         own = self.alloc if allocated else self.size
         if total <= 0:
             return 0.0
-        return min(100.0, own * 100.0 / total)
+        return own * 100.0 / total  # unclamped on purpose (see FsNode.percent_of_parent)
+
+    def share_of(self, ancestor: FsNode | None, allocated: bool = True) -> float:
+        if ancestor is None:
+            return 100.0
+        total = ancestor.alloc if allocated else ancestor.size
+        own = self.alloc if allocated else self.size
+        if total <= 0:
+            return 0.0
+        return own * 100.0 / total
 
 
 Row = FsNode | FileRow
@@ -448,9 +470,20 @@ class ScanTreeModel:
                     if entry.is_dir(follow_symlinks=False):
                         continue
                     flags = fs.SYMLINK if entry.is_symlink() else 0
+                    # The scanner counts a hard-linked file once (by inode); the live listing
+                    # would show it in full under every link. Attribute 1/nlink to each row so
+                    # the rows of a folder still add up to the folder's total.
+                    nlink = max(1, int(st.st_nlink)) if not flags else 1
                     rows.append(
                         FileRow(
-                            0, entry.name, node, st.st_size, st.st_blocks * 512, st.st_mtime, flags
+                            0,
+                            entry.name,
+                            node,
+                            st.st_size // nlink,
+                            (st.st_blocks * 512) // nlink,
+                            st.st_mtime,
+                            flags,
+                            nlink=nlink,
                         )
                     )
         except OSError:
@@ -508,7 +541,7 @@ class ScanTreeModel:
             return lambda n: n.name.casefold()
         if col == "size":
             return lambda n: n.size
-        if col in ("alloc", "percent"):
+        if col in ("alloc", "percent", "of_parent", "share"):
             return (lambda n: n.alloc) if self.allocated_primary else (lambda n: n.size)
         if col == "files":
             return lambda n: n.files
@@ -600,7 +633,21 @@ class ScanTreeModel:
         return node.alloc if self.allocated_primary else node.size
 
     def percent(self, node: Row) -> float:
+        """Share of the parent folder, in percent (the "Of parent %" column)."""
         return node.percent_of_parent(self.allocated_primary)
+
+    def share(self, node: Row) -> float:
+        """Share of the scan root, in percent (the "Share %" column and its bar)."""
+        return node.share_of(self.root, self.allocated_primary)
+
+    def _percent_unavailable(self, node: Row) -> bool:
+        """Denied folders and children of empty parents have no meaningful share."""
+        if isinstance(node, FsNode) and node.denied and node.alloc == 0:
+            return True
+        parent = node.parent
+        if parent is None:
+            return False
+        return (parent.alloc if self.allocated_primary else parent.size) <= 0
 
     def is_bold(self, node: Row) -> bool:
         parent = node.parent
@@ -636,7 +683,9 @@ class ScanTreeModel:
                 return ""
             return "—" if node.denied else _fmt_count(node.dirs)
         if kind == "percent":
-            return f"{self.percent(node):.1f} %"
+            return "—" if self._percent_unavailable(node) else f"{self.percent(node):.1f} %"
+        if kind == "share":
+            return "—" if self._percent_unavailable(node) else f"{self.share(node):.1f} %"
         if kind == "modified":
             return _fmt_date(node.mtime_max)
         if kind == "icon":
@@ -646,6 +695,8 @@ class ScanTreeModel:
                 return ICON_SYMLINK if node.flags & fs.SYMLINK else ICON_FILE
             return icon_for(node)
         if kind == "type":
+            if is_file and not node.is_summary and getattr(node, "nlink", 1) > 1:
+                return f"hard link ×{node.nlink}"
             if is_file and not node.is_summary:
                 from lindrivespace.core.classify import class_label, classify
 
@@ -681,7 +732,7 @@ class ScanTreeModel:
             if node is None:  # dummy row
                 if kind == "icon":
                     cell.set_property("icon-name", "")
-                elif kind == "percent" and has_percent:
+                elif kind in ("percent", "share") and has_percent:
                     cell.set_property("percent", 0.0)
                     cell.set_property("text", "")
                 else:
@@ -690,9 +741,12 @@ class ScanTreeModel:
             if kind == "icon":
                 cell.set_property("icon-name", self.display(node, "icon"))
                 return
-            if kind == "percent" and has_percent:
-                cell.set_property("percent", self.percent(node))
-                cell.set_property("text", self.display(node, "percent"))
+            if kind in ("percent", "share") and has_percent:
+                value = self.share(node) if kind == "share" else self.percent(node)
+                cell.set_property("percent", max(0.0, min(100.0, value)))
+                cell.set_property("text", self.display(node, kind))
+                if cell.find_property("emphasis") is not None:
+                    cell.set_property("emphasis", value > 100.0)  # numbers disagree: show it
                 return
             cell.set_property("text", self.display(node, kind))
             if cell.find_property("weight") is not None:

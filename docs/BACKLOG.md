@@ -79,3 +79,19 @@ unavailable, 105 stalls > 150 ms (max 1.8 s) during the walkthrough. Three cause
 
 Not causes (ruled out by measurement): scheduler `systemctl` calls (12 ms even under disk load),
 settings saves (2 ms), the 16 ms drain budget (p95 6 ms during scans), `lsblk` refresh (14 ms).
+
+## F. Share % semantics — adversarial review of 2026-09-16
+
+Trigger: the user saw a 10.3 GB backup folder (single child) with a full bar and an 11.5 GB
+folder with a half bar. Review verdict: arithmetic exact, semantics wrong. Implemented:
+
+| # | Finding | Status |
+|---|---|---|
+| F1 | One renderer, one colour, three denominators (per parent / per view root / per mount). | **[fixed]** Share % = share of the scan root (bar + text); Of parent % is a hidden text column. |
+| F2 | Hard-linked files rendered as several 100 % rows summing to 400 % (scanner dedups by inode, live listing did not). | **[fixed]** 1/nlink attribution, "hard link ×N" in Type. |
+| F3 | `min(100, …)` hid every over-100 anomaly (live listing vs snapshot). | **[fixed]** unclamped; renderer clamps fill only and uses the hot accent above 100 %. |
+| F4 | Bar painted outside a narrowed column (min width 48 px). | **[fixed]** clip to cell, bar shrinks. |
+| F5 | Denied / 0-byte parents read as "0.0 %". | **[fixed]** "—". |
+| F6 | Hidden toggle did not update the model's file listing until a rescan. | **[fixed]** |
+| F7 | Summary row shows the "N more files" count in the Files column (others show recursive counts). | Open, cosmetic. |
+| F8 | "Focus here" to renormalise Share % to a sub-folder, like the treemap. | Open, enhancement. |

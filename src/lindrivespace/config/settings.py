@@ -75,7 +75,7 @@ DEFAULTS: dict[str, Any] = {
         # Column order is user-reorderable by dragging headers; persisted here.
         "columns": ["name", "size", "alloc", "files", "dirs", "percent", "modified"],
         # Optional columns the user can enable from the header context menu.
-        "hidden_columns": ["owner", "type"],
+        "hidden_columns": ["of_parent", "owner", "type"],  # "Of parent %" off by default
         "widths": {},  # column id -> px, persisted after a drag-resize
         "sort": {"column": "alloc", "descending": True},
         "top_n_bold": 3,

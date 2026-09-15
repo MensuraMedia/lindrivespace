@@ -284,3 +284,88 @@ def test_reset_breaks_parent_child_cycles() -> None:
     assert child.parent is root and root.children == [child]
     model.reset()
     assert child.parent is None and root.children == [] and model.nodes == {}
+
+
+# ---- Share % (of the scan root) vs Of parent % ---------------------------------
+
+
+def _user_tree():  # type: ignore[no-untyped-def]
+    """The product owner's example: a backup folder with a single child."""
+    from lindrivespace.core.fsnode import FsNode
+
+    gb = 1_000_000_000
+    root = FsNode(1, "/home/user", top_limit=5)
+    vms = FsNode(2, "VirtualBox VMs", root)
+    rh = FsNode(3, "RedHat_Virtual_00", vms)
+    rh.add_file(9_500_000_000, 9_500_000_000, 1.0, "RedHat_Virtual_00.vdi")
+    snaps = FsNode(4, "Snapshots", rh)
+    snaps.add_file(2 * gb, 2 * gb, 1.0, "s1")
+    backup = FsNode(5, "RedHat_Virtual_00_Backup", vms)
+    rh_b = FsNode(6, "RedHat_Virtual_00", backup)
+    rh_b.add_file(9_500_000_000, 9_500_000_000, 1.0, "RedHat_Virtual_00.vdi")
+    snaps_b = FsNode(7, "Snapshots", rh_b)
+    snaps_b.add_file(800_000_000, 800_000_000, 1.0, "s1")
+    projects = FsNode(8, "projects", root)
+    projects.add_file(48 * gb, 48 * gb, 1.0, "big")
+    other = FsNode(9, "other", root)
+    other.add_file(86 * gb, 86 * gb, 1.0, "rest")
+    for n in (snaps, rh, snaps_b, rh_b, backup, vms, projects, other, root):
+        n.finalize()
+    return root, vms, rh, backup, rh_b
+
+
+def test_share_is_monotonic_with_size_while_percent_is_per_parent() -> None:
+    from lindrivespace.models.tree_model import ScanTreeModel
+
+    root, vms, rh, backup, rh_b = _user_tree()
+    m = ScanTreeModel()
+    m.root = root  # share() only needs the root
+    # Of parent %: the backup's only child is 100 % of its parent (arithmetically right)
+    assert m.percent(rh_b) == 100.0 and 52 < m.percent(rh) < 54
+    # Share %: one denominator, so the bigger folder always has the larger share
+    assert m.share(rh) > m.share(rh_b) > 0
+    assert abs(m.share(root) - 100.0) < 1e-9
+    assert m.share(vms) > m.share(rh) > m.share(backup) >= m.share(rh_b)
+    assert m.display(rh_b, "share").endswith(" %") and m.display(rh_b, "percent") == "100.0 %"
+
+
+def test_hard_links_are_attributed_once_per_link(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    import os
+
+    from lindrivespace.core.options import ScanOptions
+    from lindrivespace.core.scanner import Scanner
+    from lindrivespace.models.tree_model import ScanTreeModel
+
+    d = tmp_path / "links"
+    d.mkdir()
+    (d / "a.bin").write_bytes(b"x" * 200_000)
+    for i in range(3):
+        os.link(d / "a.bin", d / f"link{i}.bin")
+    root = Scanner().scan(str(d), ScanOptions(top_min_bytes=0), lambda e: None)
+    m = ScanTreeModel(show_hidden=True)
+    m.root = root
+    rows = m._load_files(root)
+    assert len(rows) == 4 and all(r.nlink == 4 for r in rows)
+    assert abs(sum(m.percent(r) for r in rows) - 100.0) < 0.5  # rows add up to the folder
+    assert m.display(rows[0], "type") == "hard link ×4"
+
+
+def test_percent_is_unclamped_and_dash_for_empty_or_denied_parents() -> None:
+    from lindrivespace.core.fsnode import DENIED, FsNode
+    from lindrivespace.models.tree_model import FileRow, ScanTreeModel
+
+    root = FsNode(1, "/r", top_limit=0)
+    child = FsNode(2, "c", root)
+    child.add_file(100, 100, 1.0, "f")
+    child.finalize()
+    root.finalize()
+    live = FileRow(0, "grew.bin", child, 137, 137, 1.0)  # a live listing bigger than the scan
+    m = ScanTreeModel()
+    m.root = root
+    assert m.percent(live) == 137.0 and m.display(live, "percent") == "137.0 %"
+    empty = FsNode(3, "empty", root)
+    empty.finalize()
+    orphan = FsNode(4, "x", empty)
+    assert m.display(orphan, "share") == "—" and m.display(orphan, "percent") == "—"
+    denied = FsNode(5, "locked", root, flags=DENIED)
+    assert m.display(denied, "share") == "—"

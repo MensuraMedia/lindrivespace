@@ -207,3 +207,35 @@ def test_mount_card_role_badge() -> None:
     assert card.role_label.get_text() == "PRIMARY"
     card.set_role(None)
     assert card.role is None and not card.get_style_context().has_class("role-primary")
+
+
+def test_percent_bar_never_paints_outside_a_narrow_cell() -> None:
+    import cairo
+    from gi.repository import Gdk
+
+    from lindrivespace.ui.widgets.percent_bar_renderer import PercentBarRenderer
+
+    renderer = PercentBarRenderer(GRAY_TEMPERATURE_DARK)
+    renderer.set_property("percent", 100.0)
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 200, 24)
+    cr = cairo.Context(surface)
+    cr.set_source_rgb(0, 0, 0)
+    cr.paint()
+    cell = Gdk.Rectangle()
+    cell.x, cell.y, cell.width, cell.height = 76, 0, 48, 24  # a 48 px column mid-surface
+    renderer.do_render(cr, Gtk.Label(), cell, cell, 0)
+    surface.flush()
+    data = surface.get_data()
+    stride = surface.get_stride()
+
+    def painted(x: int, y: int) -> bool:
+        b, g, r = (
+            data[y * stride + x * 4],
+            data[y * stride + x * 4 + 1],
+            data[y * stride + x * 4 + 2],
+        )
+        return (r, g, b) != (0, 0, 0)
+
+    assert any(painted(x, 12) for x in range(76, 124))  # something drawn inside
+    assert not any(painted(x, 12) for x in range(0, 76))  # nothing left of the cell
+    assert not any(painted(x, 12) for x in range(124, 200))  # nothing right of it

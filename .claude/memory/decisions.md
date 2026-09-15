@@ -83,3 +83,20 @@ those terms (Creative Commons NC licences match too but CC advises against them 
 `LICENSE.md` = plain-words preamble + full licence text + the Required Notice line;
 README, pyproject (`PolyForm-Noncommercial-1.0.0`), AppStream (`LicenseRef-…`), .deb copyright
 file and the installer carry it. Not OSI "open source" — say "source-available, noncommercial".
+
+## 2026-09-16 — "Share %" means share of the scan, not of the parent (user + adversarial review)
+Context: a 10.3 GB folder (only child of a backup folder) drew a full bar while an 11.5 GB
+folder one level up drew half a bar. The arithmetic (% of parent) was exact; the defect was one
+look for bars with a different denominator on every row. Review (adversarial-reviewer role,
+run as an Opus general agent) recommended option (b)+(c):
+1. **Share %** = share of the scan root, bar and text, one denominator per screen — the treemap
+   and the Types view already renormalise this way. A bigger folder always draws a longer bar.
+2. **Of parent %** kept as a text-only column (id `of_parent`, new so saved layouts keep it hidden), hidden by default (TreeSize/WizTree habit).
+3. Frozen contract `core/fsnode.py`: additive `share_of(ancestor)`; `percent_of_parent()` no
+   longer clamps to 100 (a live listing larger than the scan must show > 100 %, the renderer
+   clamps only the fill and switches to the hot accent).
+4. Also fixed from the review: hard-linked files are attributed 1/nlink in the live listing so a
+   folder's rows add up (Type column says "hard link ×N"); "—" for denied/empty parents; the
+   bar renderer clips to its cell; the Hidden toggle updates the model's file listing.
+Open: a "Focus here" that renormalises the share to a sub-folder (the treemap's set_root);
+the summary row's Files column shows the "more files" count rather than a recursive count.

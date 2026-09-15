@@ -175,6 +175,17 @@ Same walkthrough after the fixes: 1 stall > 150 ms (was 105), slowest click 53 m
   ring 232 644 → 22 753 entries; 2.6 % of bytes leave the analysis estimate.
   **Guard:** `test_top_min_bytes_keeps_small_files_out_of_the_ring`.
 
+### 2.13 Share % bars looked senseless (backup folder 100 %, bigger original 53 %)
+- **Symptom:** a folder's only child drew a full bar while a larger folder elsewhere drew half.
+- **Cause:** the column was "% of parent": correct numbers, but every row's bar used a different
+  denominator with one identical look, so bar length could not be read as consumption.
+- **Fix:** Share % is now the share of the scan root (bar and text); "Of parent %" survives as a
+  hidden text column. Found and fixed alongside: hard links counted N times in the live file list,
+  a clamp hiding > 100 % disagreements, the bar painting outside narrow cells, 0 % for denied or
+  empty parents, and the Hidden toggle not reaching the model. See BACKLOG §F.
+- **Guard:** `tests/models` (user's tree: share monotonic with size; hard links sum to 100 %;
+  unclamped 137 %; "—" cases), `tests/ui/test_widgets` (no paint outside a 48 px cell).
+
 ## 3. History, scheduler, collector
 
 ### 3.1 Trend chart x-axis labels overlapped at high point density

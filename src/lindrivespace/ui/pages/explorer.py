@@ -232,6 +232,7 @@ class ExplorerPage(BasePage):
 
     def _on_hidden_changed(self, _toolbar: ScanToolbar, show_hidden: bool) -> None:
         self.settings.set("scan.show_hidden", show_hidden)
+        self.model.show_hidden = show_hidden  # file rows listed on expand follow the toggle
 
     def _on_cross_mounts_changed(self, _toolbar: ScanToolbar, cross_mounts: bool) -> None:
         self.settings.set("scan.cross_mounts", cross_mounts)

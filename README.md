@@ -39,19 +39,21 @@ Ubuntu's typeface and colour language.
 ![Overview — mounts and partitions](docs/screenshots/overview.png)
 
 ### Explorer — folders and files
-- Tree-table columns: **Name · Size · Allocated · Files · Folders · % of Parent · Modified** (Owner and Type optional).
+- Tree-table columns: **Name · Size · Allocated · Files · Folders · Share % · Modified** (Of parent %, Owner and Type optional). *Share %* is each row's share of the whole scan, so a bigger folder always has a longer bar wherever it sits; *Of parent %* gives the TreeSize-style per-folder split.
 - **Two sizes, always.** *Size* is apparent (`st_size`); *Allocated* is what actually occupies the disk
   (`st_blocks × 512`, what `du` reports). Allocated is the default sort and bar basis; one click switches.
 - Hard links counted once; symlinks never followed; mount boundaries respected (crossing is opt-in).
 - Progressive fill: the root row appears immediately and the tree fills as subtrees settle; scanning never blocks the UI.
-- Largest-first sort, bold rows for the top children of each parent, inline Share % bars, breadcrumb strip, status bar.
+- Largest-first sort, bold rows for the top children of each parent, inline Share % bars, breadcrumb strip, status bar. Hard-linked files are attributed once (1/N per link) so a folder's rows add up to its total.
 - **Drill down to files.** Expanding a folder lists its files live (sizes from `lstat`), interleaved with sub-folders in the same sort order, each with its own Share % bar; very wide folders show the 2,000 largest plus a "… N more files" row so totals always add up. Double-click a file to reveal it in the file manager.
 - Columns can be dragged into any order, resized, sorted from their header, and shown or hidden from the header menu or the toolbar's Columns button; the layout is remembered.
 - Denied subtrees (other users' homes, `/var/lib/docker`) are marked with a lock and can be re-scanned as
   administrator through a polkit prompt — the elevated helper is a tiny stdlib-only process, never the GUI.
 - Cancel, pause, rescan a subtree, exclude a folder.
 
-*(Pictured at the top of this page.)*
+*(Also pictured at the top of this page: drilling into a folder of VM images.)*
+
+![Explorer — the optional "Of parent %" column shown next to Share %](docs/screenshots/explorer-2.png)
 
 ### Insight panel (Analysis view, collapsible)
 - **Treemap** (squarified) of the selected row; click to select, double-click to zoom.
@@ -151,15 +153,29 @@ src/lindrivespace/
 
 The full design is in [docs/CONCEPT-AND-TECHNICAL-DESIGN.md](docs/CONCEPT-AND-TECHNICAL-DESIGN.md).
 
-## Requirements
+## Compatibility and requirements
 
-- Linux Mint 22.x / Ubuntu 24.04 / Debian 12+ (any GTK 3.24 desktop)
+LinDriveSpace is a native GTK 3 application for the Debian family of Linux desktops.
+
+| Distribution | Status |
+|---|---|
+| **Linux Mint 22.x** (Cinnamon, MATE, Xfce) | Developed and tested here: Mint 22.3 "Zena", GTK 3.24, Python 3.12. |
+| **LMDE 6** | Same packages, expected to work. |
+| **Ubuntu 24.04 LTS and newer** (plus Kubuntu, Xubuntu, Ubuntu MATE, Pop!_OS 24, Zorin OS 17, elementary OS 8) | Supported — the `.deb` and the installer script target these directly. |
+| **Debian 12 "bookworm" and newer** | Supported (Python 3.11 / GTK 3.24). |
+| Older Ubuntu 22.04 / Mint 21 | Runs from the checkout (Python 3.10, GTK 3.24); not packaged for it. |
+| Fedora, openSUSE, Arch and other non-Debian distributions | Not packaged. The app itself only needs GTK 3.24 + PyGObject, so `./run.sh` works once `python3-gobject`, `gtk3`, `python3-psutil` and `python3-pyudev` are installed with the distribution's own package manager. |
+
+Works on X11 and Wayland sessions. Not for Windows, macOS or the Windows Subsystem for Linux
+(no GTK desktop, no real mounts).
+
 - Python 3.10+ (3.12 on Mint 22)
-- System packages: `python3-gi gir1.2-gtk-3.0 python3-cairo python3-psutil python3-pyudev fonts-ubuntu policykit-1`
+- System packages: `python3-gi python3-gi-cairo gir1.2-gtk-3.0 python3-cairo python3-psutil python3-pyudev fonts-ubuntu policykit-1`
+  (`policykit-1` only for "Scan as administrator"; `fonts-ubuntu` for the intended typography — any sans font works)
 
 ## Install and run
 
-**Debian package** (Linux Mint, Ubuntu, Debian) — installs the program, the `lindrivespace`
+**Debian package** (Linux Mint, LMDE, Ubuntu and derivatives, Debian 12+) — installs the program, the `lindrivespace`
 command, the menu entry (System › LinDriveSpace), icons, AppStream metadata and the polkit policy:
 
 ```bash

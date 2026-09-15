@@ -33,7 +33,8 @@ COLUMN_DEFS: tuple[tuple[str, str, str, float, int, bool], ...] = (
     ("alloc", "Allocated", "alloc", 1.0, 90, True),
     ("files", "Files", "files", 1.0, 80, True),
     ("dirs", "Folders", "dirs", 1.0, 80, True),
-    ("percent", "Share %", "percent", 1.0, 160, True),
+    ("share", "Share %", "share", 1.0, 160, True),
+    ("of_parent", "Of parent %", "percent", 1.0, 110, True),
     ("modified", "Modified", "modified", 0.0, 100, True),
     ("owner", "Owner", "owner", 0.0, 100, True),
     ("type", "Type", "type", 0.0, 80, True),
@@ -41,7 +42,7 @@ COLUMN_DEFS: tuple[tuple[str, str, str, float, int, bool], ...] = (
 DEFAULT_ORDER: tuple[str, ...] = tuple(c[0] for c in COLUMN_DEFS)
 DEFAULT_WIDTHS: dict[str, int] = {c[0]: c[4] for c in COLUMN_DEFS}
 # Kept in sync with config.settings.DEFAULTS["explorer"]["hidden_columns"] by convention.
-_DEFAULT_HIDDEN: frozenset[str] = frozenset({"owner", "type"})
+_DEFAULT_HIDDEN: frozenset[str] = frozenset({"of_parent", "owner", "type"})
 _MIN_WIDTH = 48
 _NAME_SIZE_WIDTH = 72
 
@@ -125,9 +126,9 @@ class ExplorerTree(Gtk.ScrolledWindow):
         for cid, title, kind, xalign, width, _hideable in COLUMN_DEFS:
             if cid == "name":
                 column = self._build_name_column(title)
-            elif kind == "percent":
-                column = self._build_percent_column(title)
-            else:
+            elif kind == "share":
+                column = self._build_percent_column(title, kind)  # the bar
+            else:  # "percent" (Of parent %) is text-only, like the reference tools
                 column = self._build_text_column(title, kind, xalign)
 
             column._lds_id = cid  # type: ignore[attr-defined]
@@ -171,11 +172,11 @@ class ExplorerTree(Gtk.ScrolledWindow):
 
         return column
 
-    def _build_percent_column(self, title: str) -> Gtk.TreeViewColumn:
+    def _build_percent_column(self, title: str, kind: str = "share") -> Gtk.TreeViewColumn:
         column = Gtk.TreeViewColumn(title=title)
         renderer = PercentBarRenderer(self.theme)
         column.pack_start(renderer, True)
-        self._bind_cell(column, renderer, "percent")
+        self._bind_cell(column, renderer, kind)
         return column
 
     def _build_text_column(self, title: str, kind: str, xalign: float) -> Gtk.TreeViewColumn:
@@ -228,7 +229,12 @@ class ExplorerTree(Gtk.ScrolledWindow):
         button = column.get_button()
         if button is not None and column.get_title() == "Share %":
             button.set_tooltip_text(
-                "Share of the parent folder's size (allocated or apparent, per the toolbar toggle)"
+                "Share of the whole scan (allocated or apparent, per the toolbar toggle): "
+                "one scale for every row, so a bigger folder always has a longer bar"
+            )
+        if button is not None and column.get_title() == "Of parent %":
+            button.set_tooltip_text(
+                "Share of the parent folder only — each folder's rows add up to 100 %"
             )
         if button is not None:
             button.connect("button-press-event", self._on_header_button_press)
@@ -360,13 +366,18 @@ class ExplorerTree(Gtk.ScrolledWindow):
             order = list(
                 self.settings.get("explorer.columns", list(DEFAULT_ORDER)) or DEFAULT_ORDER
             )
-            order += [cid for cid in DEFAULT_ORDER if cid not in order]
+            new_columns = [cid for cid in DEFAULT_ORDER if cid not in order]
+            for index, cid in enumerate(DEFAULT_ORDER):  # columns added later land in place
+                if cid not in order:
+                    order.insert(min(index, len(order)), cid)
             self._apply_order(order)
 
             widths = dict(self.settings.get("explorer.widths", {}) or {})
             self._apply_widths(widths)
 
             hidden = set(self.settings.get("explorer.hidden_columns", list(_DEFAULT_HIDDEN)) or [])
+            # A column the saved layout has never seen takes its default visibility.
+            hidden |= {cid for cid in new_columns if cid in _DEFAULT_HIDDEN}
             self._apply_visibility(hidden)
 
             sort = self.settings.get("explorer.sort", {}) or {}

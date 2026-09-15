@@ -220,3 +220,41 @@ def test_favorites_star_and_reveal(window, tmp_path) -> None:  # type: ignore[no
     node = page.tree.get_selected_node()
     assert node is not None and node.name == "sub"
     assert window.pending_reveal is None
+
+
+def test_new_columns_take_default_visibility_in_old_layouts(window) -> None:  # type: ignore[no-untyped-def]
+    """A layout saved before "Of parent %" existed must not suddenly show it."""
+    window.show_page("explorer")
+    page = window.pages["explorer"]
+    tree = page.tree
+    settings = page.settings
+
+    def order() -> list[str]:
+        return [c._lds_id for c in tree.treeview.get_columns()]
+
+    saved_cols = settings.get("explorer.columns")
+    saved_hidden = settings.get("explorer.hidden_columns")
+    try:
+        # an old layout: the bar column was called "percent", no "share"/"of_parent" yet
+        old_order = [
+            "name",
+            "size",
+            "alloc",
+            "files",
+            "dirs",
+            "percent",
+            "modified",
+            "owner",
+            "type",
+        ]
+        settings.set("explorer.columns", old_order)
+        settings.set("explorer.hidden_columns", ["owner", "type"])
+        tree.restore_state()
+        assert not tree._columns["of_parent"].get_visible()
+        assert tree._columns["share"].get_visible()
+        assert order().index("of_parent") == order().index("share") + 1
+        assert order().index("share") == order().index("dirs") + 1
+    finally:
+        settings.set("explorer.columns", saved_cols)
+        settings.set("explorer.hidden_columns", saved_hidden)
+        tree.restore_state()

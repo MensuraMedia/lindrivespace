@@ -28,6 +28,7 @@ _CSV_FIELDS = (
     "files",
     "dirs",
     "percent_of_parent",
+    "share_of_root",
     "mtime_max",
     "flags",
 )
@@ -82,6 +83,7 @@ def export_csv(
                     node.files,
                     node.dirs,
                     f"{node.percent_of_parent(allocated_primary):.2f}",
+                    f"{node.share_of(root, allocated_primary):.4f}",
                     _iso(node.mtime_max),
                     node.flags,
                 )
@@ -91,7 +93,12 @@ def export_csv(
 
 
 def _emit_json_node(
-    out: list[str], node: FsNode, rel: str, depth: int, allocated_primary: bool
+    out: list[str],
+    node: FsNode,
+    rel: str,
+    depth: int,
+    allocated_primary: bool,
+    root: FsNode | None = None,
 ) -> None:
     out.append("{")
     out.append(f'"depth":{depth},')
@@ -104,6 +111,7 @@ def _emit_json_node(
     out.append(f',"files":{int(node.files)}')
     out.append(f',"dirs":{int(node.dirs)}')
     out.append(f',"percent_of_parent":{node.percent_of_parent(allocated_primary):.4f}')
+    out.append(f',"share_of_root":{node.share_of(root, allocated_primary):.4f}')
     out.append(',"mtime_max":')
     out.append(json.dumps(_iso(node.mtime_max)))
     out.append(f',"flags":{int(node.flags)}')
@@ -137,7 +145,7 @@ def export_json(root: FsNode, path: Path, *, max_depth: int | None = None) -> in
     def within_depth(depth: int) -> bool:
         return max_depth is None or depth < max_depth
 
-    _emit_json_node(out, root, ".", 0, allocated_primary)
+    _emit_json_node(out, root, ".", 0, allocated_primary, root)
     count += 1
     stack: list[_JFrame] = [_JFrame(root, ".", 0)]
 
@@ -152,7 +160,7 @@ def export_json(root: FsNode, path: Path, *, max_depth: int | None = None) -> in
         frame.started = True
         child_rel = child.name if frame.rel == "." else f"{frame.rel}/{child.name}"
         child_depth = frame.depth + 1
-        _emit_json_node(out, child, child_rel, child_depth, allocated_primary)
+        _emit_json_node(out, child, child_rel, child_depth, allocated_primary, root)
         count += 1
         stack.append(_JFrame(child, child_rel, child_depth))
 
