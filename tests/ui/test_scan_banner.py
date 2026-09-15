@@ -24,11 +24,11 @@ def _pump(cond, timeout: float = 30.0) -> None:  # type: ignore[no-untyped-def]
 
 
 def test_format_countdown() -> None:
-    assert format_countdown(None) == "estimating…"
-    assert format_countdown(3) == "< 5 s left"
-    assert format_countdown(42) == "≈ 42 s left"
-    assert format_countdown(102) == "≈ 1:42 left"
-    assert format_countdown(3723) == "≈ 1:02:03 left"
+    assert format_countdown(None) == "…"
+    assert format_countdown(3) == "0:03"
+    assert format_countdown(42) == "0:42"
+    assert format_countdown(102) == "1:42"
+    assert format_countdown(3723) == "1:02:03"
 
 
 def test_expected_bytes_mount_and_folder(tmp_path: Path) -> None:
@@ -61,6 +61,17 @@ def test_banner_shows_during_scan_and_hides_after(window, tmp_path: Path) -> Non
     _pump(lambda: banner.get_visible(), timeout=10.0)
     assert registry.get(str(root)).expected_bytes == entry.last_alloc
     _pump(lambda: registry.get(str(root)).state == STATE_DONE, timeout=30.0)
+    # finished scans become bold-green chips (no checkmark) while another scan runs
+    other = tmp_path / "other"
+    (other / "x").mkdir(parents=True)
+    for i in range(2000):
+        (other / "x" / f"f{i}").write_bytes(b"y")
+    registry.request(str(other))
+    _pump(lambda: banner.get_visible() and str(root) in banner._chips, timeout=10.0)
+    chip = banner._chips[str(root)]
+    assert chip.get_style_context().has_class("chip-done")
+    assert "✓" not in chip.get_text()
+    _pump(lambda: registry.active is None, timeout=30.0)
 
 
 def test_banner_stop_cancels(window, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

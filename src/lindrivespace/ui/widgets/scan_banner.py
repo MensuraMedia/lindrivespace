@@ -1,8 +1,11 @@
-"""ScanBanner — the running scan, shown at the top of the content area (variant A).
+"""ScanBanner — the running scan at the top of the content area (variant B, stats panel).
 
-One line: spinner · "Scanning" + path · progress bar · scanned of used · percent
-and rate · estimated countdown · Pause / Stop · "N more queued". Driven entirely
-by the ScanRegistry's signals plus a 1 s tick for the countdown; hidden when idle.
+Left: the percent in Ubuntu Light with "of <path> scanned". Middle: a progress
+bar, a key/value row (scanning · scanned · of used · rate · elapsed) and the
+queue as square chips — finished ones bold green (no checkmark), the running
+one accent, queued ones plain. Right: the estimated countdown in large type
+with Pause and Stop beneath. Driven by the ScanRegistry's signals plus a 1 s
+tick; hidden when nothing is scanning.
 """
 
 from __future__ import annotations
@@ -16,22 +19,29 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk, Pango  # noqa: E402
 
 from lindrivespace.config.theme import ThemeDefinition  # noqa: E402
-from lindrivespace.services.scan_registry import ScanEntry, ScanRegistry  # noqa: E402
+from lindrivespace.services.scan_registry import (  # noqa: E402
+    STATE_DONE,
+    STATE_QUEUED,
+    STATE_SCANNING,
+    ScanEntry,
+    ScanRegistry,
+)
 
 
 def format_countdown(seconds: float | None) -> str:
-    """ "≈ 1:42 left", "≈ 12 s left", "estimating…" (None) or "< 5 s left"."""
+    """Compact countdown: "1:42", "0:12", "1:02:03"; "…" while estimating."""
     if seconds is None:
-        return "estimating…"
-    if seconds < 5:
-        return "< 5 s left"
-    if seconds < 60:
-        return f"≈ {int(seconds)} s left"
-    minutes, secs = divmod(int(seconds), 60)
+        return "…"
+    total = max(0, int(seconds))
+    minutes, secs = divmod(total, 60)
     if minutes >= 60:
         hours, minutes = divmod(minutes, 60)
-        return f"≈ {hours}:{minutes:02d}:{secs:02d} left"
-    return f"≈ {minutes}:{secs:02d} left"
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes}:{secs:02d}"
+
+
+def format_elapsed(seconds: float) -> str:
+    return format_countdown(max(0.0, seconds))
 
 
 class ScanBanner(Gtk.Box):
@@ -40,7 +50,7 @@ class ScanBanner(Gtk.Box):
     def __init__(
         self, theme: ThemeDefinition, registry: ScanRegistry, fmt_bytes: Callable[[int], str]
     ) -> None:
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=22)
         self.theme = theme
         self.registry = registry
         self.fmt_bytes = fmt_bytes
@@ -50,55 +60,71 @@ class ScanBanner(Gtk.Box):
         self._rate = 0.0  # bytes/s, smoothed
         self._eta: float | None = None
         self._eta_at = 0.0
+        self._chips: dict[str, Gtk.Label] = {}
 
         self.get_style_context().add_class("scan-banner")
         self.set_no_show_all(True)
 
+        # ---- left: big percent -------------------------------------------------
+        left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        left.set_valign(Gtk.Align.CENTER)
+        pct_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+        self.percent_label = Gtk.Label(label="0")
+        self.percent_label.get_style_context().add_class("banner-percent")
+        self.percent_label.set_xalign(0.0)
+        pct_row.pack_start(self.percent_label, False, False, 0)
+        self.percent_sign = Gtk.Label(label="%")
+        self.percent_sign.get_style_context().add_class("banner-percent-sign")
+        self.percent_sign.set_valign(Gtk.Align.END)
+        pct_row.pack_start(self.percent_sign, False, False, 0)
+        left.pack_start(pct_row, False, False, 0)
+        caption_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         self.spinner = Gtk.Spinner()
-        self.spinner.set_size_request(18, 18)
-        self.spinner.set_valign(Gtk.Align.CENTER)
-        self.pack_start(self.spinner, False, False, 0)
+        self.spinner.set_size_request(12, 12)
+        caption_row.pack_start(self.spinner, False, False, 0)
+        self.caption_label = Gtk.Label(label="scanning")
+        self.caption_label.get_style_context().add_class("dim")
+        self.caption_label.set_xalign(0.0)
+        caption_row.pack_start(self.caption_label, False, False, 0)
+        left.pack_start(caption_row, False, False, 0)
+        self.pack_start(left, False, False, 0)
 
-        middle = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        # ---- middle: bar, key/value row, queue chips ----------------------------
+        middle = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
         middle.set_valign(Gtk.Align.CENTER)
-        title_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        self.title_label = Gtk.Label(label="Scanning")
-        self.title_label.get_style_context().add_class("banner-title")
-        self.title_label.set_xalign(0.0)
-        title_row.pack_start(self.title_label, False, False, 0)
-        self.path_label = Gtk.Label(label="")
-        self.path_label.get_style_context().add_class("mono")
-        self.path_label.get_style_context().add_class("muted")
-        self.path_label.set_xalign(0.0)
-        self.path_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
-        title_row.pack_start(self.path_label, True, True, 0)
-        middle.pack_start(title_row, False, False, 0)
         self.progress = Gtk.ProgressBar()
         self.progress.set_show_text(False)
         self.progress.get_style_context().add_class("banner-progress")
         middle.pack_start(self.progress, False, False, 0)
+
+        kv = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=22)
+        self.path_label = self._kv(kv, "Scanning")
+        self.path_label.get_style_context().add_class("mono")
+        self.path_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+        self.path_label.set_max_width_chars(36)
+        self.stats_label = self._kv(kv, "scanned")
+        self.total_label = self._kv(kv, "of")
+        self.rate_label = self._kv(kv, "rate")
+        self.elapsed_label = self._kv(kv, "elapsed")
+        middle.pack_start(kv, False, False, 0)
+
+        self.queue_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        middle.pack_start(self.queue_box, False, False, 0)
         self.pack_start(middle, True, True, 0)
 
-        stats = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
-        stats.set_valign(Gtk.Align.CENTER)
-        self.stats_label = Gtk.Label(label="")
-        self.stats_label.get_style_context().add_class("banner-stats")
-        self.stats_label.set_xalign(1.0)
-        stats.pack_start(self.stats_label, False, False, 0)
-        self.detail_label = Gtk.Label(label="")
-        self.detail_label.get_style_context().add_class("dim")
-        self.detail_label.set_xalign(1.0)
-        stats.pack_start(self.detail_label, False, False, 0)
-        self.pack_start(stats, False, False, 0)
-
-        self.eta_label = Gtk.Label(label="estimating…")
+        # ---- right: countdown + buttons -----------------------------------------
+        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        right.set_valign(Gtk.Align.CENTER)
+        self.eta_label = Gtk.Label(label="…")
         self.eta_label.get_style_context().add_class("banner-eta")
-        self.eta_label.set_valign(Gtk.Align.CENTER)
-        self.eta_label.set_width_chars(14)
-        self.pack_start(self.eta_label, False, False, 0)
-
+        self.eta_label.set_xalign(1.0)
+        right.pack_start(self.eta_label, False, False, 0)
+        eta_caption = Gtk.Label(label="estimated left")
+        eta_caption.get_style_context().add_class("dim")
+        eta_caption.set_xalign(1.0)
+        right.pack_start(eta_caption, False, False, 0)
         buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        buttons.set_valign(Gtk.Align.CENTER)
+        buttons.set_halign(Gtk.Align.END)
         self.pause_button = Gtk.ToggleButton(label="Pause")
         self.pause_button.set_tooltip_text("Pause the scan")
         self.pause_button.connect("toggled", self._on_pause_toggled)
@@ -111,14 +137,24 @@ class ScanBanner(Gtk.Box):
         self.stop_button.set_tooltip_text("Stop this scan")
         self.stop_button.connect("clicked", self._on_stop_clicked)
         buttons.pack_start(self.stop_button, False, False, 0)
-        self.queue_label = Gtk.Label(label="")
-        self.queue_label.get_style_context().add_class("pill")
-        self.queue_label.set_no_show_all(True)
-        buttons.pack_start(self.queue_label, False, False, 0)
-        self.pack_start(buttons, False, False, 0)
+        right.pack_start(buttons, False, False, 0)
+        self.pack_start(right, False, False, 0)
 
         registry.connect("active-changed", lambda _r, _p: self.refresh())
         registry.connect("entry-changed", lambda _r, _p: self.refresh())
+
+    @staticmethod
+    def _kv(box: Gtk.Box, key: str) -> Gtk.Label:
+        pair = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
+        k = Gtk.Label(label=key)
+        k.get_style_context().add_class("muted")
+        pair.pack_start(k, False, False, 0)
+        v = Gtk.Label(label="")
+        v.get_style_context().add_class("banner-kv")
+        v.set_xalign(0.0)
+        pair.pack_start(v, False, False, 0)
+        box.pack_start(pair, False, False, 0)
+        return v
 
     # ---- state -----------------------------------------------------------------
 
@@ -133,10 +169,7 @@ class ScanBanner(Gtk.Box):
             return
         if not self.get_visible():
             self._show()
-        self.path_label.set_text(entry.path)
-        expected = entry.expected_bytes
         now = time.monotonic()
-        # smoothed rate from successive progress reports
         if entry.alloc > self._last_alloc and self._last_alloc_at:
             dt = now - self._last_alloc_at
             if dt > 0:
@@ -145,31 +178,50 @@ class ScanBanner(Gtk.Box):
         if entry.alloc != self._last_alloc:
             self._last_alloc, self._last_alloc_at = entry.alloc, now
 
-        scanned = self.fmt_bytes(entry.alloc)
+        self.path_label.set_text(entry.path)
+        self.caption_label.set_text(f"of {entry.path} scanned")
+        self.stats_label.set_text(self.fmt_bytes(entry.alloc))
+        self.rate_label.set_text(f"{self.fmt_bytes(int(self._rate))}/s" if self._rate else "—")
+        self.elapsed_label.set_text(format_elapsed(entry.elapsed))
+        expected = entry.expected_bytes
         if expected:
             fraction = min(0.99, entry.alloc / expected)
             self.progress.set_fraction(fraction)
-            self.stats_label.set_text(f"{scanned} of {self.fmt_bytes(expected)}")
+            self.percent_label.set_text(f"{int(fraction * 100)}")
+            self.total_label.set_text(f"{self.fmt_bytes(expected)} used")
             remaining = max(0, expected - entry.alloc)
             eta = remaining / self._rate if self._rate > 0 else None
             if eta is None and fraction > 0 and entry.elapsed > 1:
                 eta = entry.elapsed * (1 / fraction - 1)
             self._eta, self._eta_at = eta, now
-            rate_text = f" · {self.fmt_bytes(int(self._rate))}/s" if self._rate else ""
-            self.detail_label.set_text(f"{fraction * 100:.0f} %{rate_text}")
         else:
             self.progress.pulse()
-            self.stats_label.set_text(scanned)
-            rate_text = f"{self.fmt_bytes(int(self._rate))}/s" if self._rate else ""
-            self.detail_label.set_text(rate_text)
+            self.percent_label.set_text("…")
+            self.total_label.set_text("unknown")
             self._eta = None
         self._update_countdown()
-        queued = len(self.registry.queue)
-        if queued:
-            self.queue_label.set_text(f"{queued} more queued")
-            self.queue_label.show()
-        else:
-            self.queue_label.hide()
+        self._update_chips()
+
+    def _update_chips(self) -> None:
+        wanted: list[tuple[str, str]] = []
+        for path, e in self.registry.entries.items():
+            if e.state in (STATE_DONE, STATE_SCANNING, STATE_QUEUED):
+                wanted.append((path, e.state))
+        for child in list(self.queue_box.get_children()):
+            self.queue_box.remove(child)
+        self._chips.clear()
+        for path, state in wanted:
+            chip = Gtk.Label(label=path)
+            ctx = chip.get_style_context()
+            ctx.add_class("chip")
+            if state == STATE_DONE:
+                ctx.add_class("chip-done")  # bold green, no checkmark
+            elif state == STATE_SCANNING:
+                ctx.add_class("chip-now")
+            chip.show()
+            self.queue_box.pack_start(chip, False, False, 0)
+            self._chips[path] = chip
+        self.queue_box.show()
 
     def _update_countdown(self) -> None:
         if self._eta is None:
@@ -179,11 +231,13 @@ class ScanBanner(Gtk.Box):
         self.eta_label.set_text(format_countdown(max(0.0, left)))
 
     def _tick(self) -> bool:
-        if self.entry is None:
+        entry = self.entry
+        if entry is None:
             self._tick_id = 0
             return False
-        if self.entry.controller.paused:
+        if entry.controller.paused:
             self._eta_at = time.monotonic()  # freeze the countdown while paused
+        self.elapsed_label.set_text(format_elapsed(entry.elapsed))
         self._update_countdown()
         return True
 

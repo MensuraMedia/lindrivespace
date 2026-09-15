@@ -35,3 +35,4 @@
 | 2026-09-15T06:10:00 | Explorer toolbar spacing/margins fixed (6 px gaps, 8 px margins, linked Allocated/Apparent pair, text "Columns" button); header pill gained a spinner. |
 | 2026-09-15T07:30:00 | Scan display moved from the header pop-up to a full-width strip at the top of the content area (user): spinner, path, real progress bar (scanned ÷ mount used bytes, or last scan total for folders), scanned-of-total, percent and rate, estimated countdown, Pause/Stop, queue chip. No "entries" wording. Mockups of three variants: docs/mockups/scan-strip-mockups.html (A built). |
 | 2026-09-15T07:30:00 | Hardware and Glossary pages registered in the sidebar (WP16, WP15 in progress). |
+| 2026-09-15T08:10:00 | Scan strip switched to variant B (user): big percent, bar + key/value row (scanning · scanned · of used · rate · elapsed), square queue chips (done = bold green, no checkmark; running = accent), large countdown with Pause/Stop. |

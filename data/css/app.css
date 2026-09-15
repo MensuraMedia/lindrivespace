@@ -400,28 +400,28 @@ spinner {
   -gtk-icon-source: -gtk-icontheme("process-working-symbolic");
 }
 
-/* ---- scan banner (top of the content area) -------------------------------- */
+/* ---- scan banner (top of the content area, stats panel) ------------------- */
 .scan-banner {
   background-color: @bg_surface;
-  border-top: 2px solid @accent;
   border-bottom: 1px solid @line;
-  padding: 10px 20px;
+  padding: 12px 20px;
 }
-.scan-banner .banner-title {
-  font-weight: 500;
+.scan-banner .banner-percent {
+  font-size: 26pt;
+  font-weight: 300;
 }
-.scan-banner .banner-stats {
-  font-size: 11pt;
+.scan-banner .banner-percent-sign {
+  color: @fg_muted;
+  font-size: 13pt;
+  font-weight: 300;
+  padding-bottom: 6px;
+}
+.scan-banner .banner-kv {
   font-weight: 500;
 }
 .scan-banner .banner-eta {
-  background-color: @bg_sunken;
-  border: 1px solid @line;
-  border-radius: 4px;
-  color: @fg;
-  font-family: "Ubuntu Mono", "DejaVu Sans Mono", monospace;
-  font-size: 10pt;
-  padding: 4px 10px;
+  font-size: 17pt;
+  font-weight: 300;
 }
 .scan-banner .banner-stop image {
   color: @danger;
@@ -430,4 +430,21 @@ spinner {
 .scan-banner progressbar.banner-progress progress {
   min-height: 8px;
   border-radius: 4px;
+}
+.scan-banner label.chip {
+  background-color: @bg_sunken;
+  border: 1px solid @line;
+  border-radius: 3px;
+  color: @fg_muted;
+  font-family: "Ubuntu Mono", "DejaVu Sans Mono", monospace;
+  font-size: 9pt;
+  padding: 2px 10px;
+}
+.scan-banner label.chip.chip-done {
+  color: @ok;
+  font-weight: 700;
+}
+.scan-banner label.chip.chip-now {
+  border-color: @accent;
+  color: @accent;
 }
