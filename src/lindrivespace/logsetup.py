@@ -101,6 +101,7 @@ def _install_file_handler(root: logging.Logger, target_dir: Path, level: str) ->
 def reconfigure(*, directory: Path | None = None, level: str = "info") -> Path | None:
     """Move the log file / change its level at runtime (Settings › Diagnostics)."""
     root = logging.getLogger(LOGGER_NAME)
+    root.setLevel(logging.DEBUG)  # handlers filter; the logger itself must let everything through
     path = _install_file_handler(root, directory or log_dir(), level)
     root.info("logging reconfigured: %s (%s)", path or "stderr only", level)
     return path

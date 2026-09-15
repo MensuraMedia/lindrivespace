@@ -1,5 +1,7 @@
 # LinDriveSpace — Backlog (investigated findings)
 
+> **2026-09-15 walkthrough update:** section E below supersedes the guesses in A5/A6/C1/C3 with measured root causes.
+
 Findings from the 2026-09-15 investigation the user asked for ("slight delay when clicking
 each button", "performance problems, some errors"). Each item has the evidence, the likely
 cause and a proposed fix. Nothing here is done unless marked **[fixed]**; the rest is for a later
@@ -42,3 +44,27 @@ session. Companion documents: `docs/ISSUES-AND-RESOLUTIONS.md` (resolved problem
 |---|---|---|
 | D1 | The session-scoped UI window fixture uses the real `~/.config` and `~/.cache`; tests that touch settings must restore them by hand (one test wrote `history.period` into the real file). | Set `XDG_CONFIG_HOME` / `XDG_CACHE_HOME` / `LINDRIVESPACE_LOG_DIR` to a tmp dir in `tests/ui/conftest.py` before the app is built. |
 | D2 | `jq` still missing → universal hooks are inert. | `sudo apt install jq`. |
+
+## E. Verified root causes — scripted walkthrough of every feature (2026-09-15)
+
+Method: one window, real startup scan (/ 1.07 M entries, /home 0.58 M, /mnt/data 5.15 M),
+every sidebar page, History chips + Change tile, Explorer toggles/expand, Settings switch,
+clicked three times (early scan, big scan, idle). A 10 ms heartbeat measured main-loop stalls;
+a watchdog recorded every thread's stack whenever the loop was > 150 ms late. Logs in
+`~/.cache/lindrivespace/logs/` carry `WALK begin/end` and `STALL` lines for each click.
+
+**What the clicks themselves cost:** every handler is < 10 ms and paints within ~20 ms except
+Glossary first show (130 ms handler + 140 ms first paint, 120 wrapped rows laid out at once) and
+"expand root" (73 ms). The delay the user feels is *not* in the handlers: it is the main loop being
+unavailable, 105 stalls > 150 ms (max 1.8 s) during the walkthrough. Three causes, all measured:
+
+| # | Cause | Evidence | Clean fix | Effort |
+|---|---|---|---|---|
+| E1 | **History "Change" work holds the GIL.** `list_snapshots()` gunzips and JSON-parses *every* kept snapshot (16 files, 59 MB compressed) just to read `meta`, and is called twice per click plus once per autosave trim; then the two chosen snapshots (up to 7 MB gz / 375 k dirs each) are loaded on a thread. gzip, the C JSON decoder and `_dict_to_node` hold the GIL for 300–1 800 ms at a time. | 184 STALL records with `history-changes @ gzip.read / json.raw_decode / snapshot.list_snapshots / _dict_to_node`; thread-vs-fork experiment: thread load p95 295 ms, forked child max 30 ms. | (a) `list_snapshots` reads only the first ~4 KB of each file (`meta` + root `"a"` are in the first 200 bytes) and `save_snapshot` writes `alloc` into `meta`; (b) run `change_report()` and `autosave_snapshot()` in a **forked child** (`os.fork`, copy-on-write, no pickling of the tree; result back over a pipe via `GLib.io_add_watch`), never on a thread. | S–M |
+| E2 | **Cyclic GC full collections with millions of live tree objects.** Each retained scan keeps its `FsNode` tree (parent↔children cycles, `TopFile` tuples). With /, /home and /mnt/data retained there are 2.1 M tracked objects; a full collection takes **343 ms** and is triggered by allocation on whichever thread allocates — the drain (`tree_model._on_started`, 451–580 ms samples) or the scanner (main thread waits for the GIL). | Scan-only watchdog: main-thread stack at `_on_started` 580/451 ms; `gc.collect()` with the three trees loaded 341–349 ms; after `gc.freeze()` 0 ms. Scan speed itself is unaffected (4.9 s vs 5.0 s). | `gc.freeze()` when a scan finishes (retained trees leave the collector); raise `threshold0` to ~50 000 during scans; when a tree is dropped (rescan), break parent/child links and `gc.unfreeze()` before the one collection. | S |
+| E3 | **Per-folder "largest files" ring dominates memory and scan time.** Every file enters a 50-entry heap per directory: /home retains 232 644 `TopFile` tuples = 57 MB of an 86 MB tree, and the heap maintenance makes the scan 15.6 s vs 6.3 s without it. RSS after the startup scan is 1.1 GB (1.5 GB once History loaded /mnt/data snapshots). | Per-process scans of /home: top 50 → 86 MB / 15.6 s; top 10 → 69 MB / 8.8 s; none → 29 MB / 6.3 s; **1 MB minimum** → 32 MB / 6.1 s with 4 570 entries retained. | Add `ScanOptions.top_min_bytes` (default 1 MB): files below it never enter the ring (the Explorer lists files live with `scandir`, so nothing visible is lost; the Top-files panel already ranks by size). Frozen-contract change → record in `decisions.md`. Expected: ~60 % less memory, 2× faster scans, smaller snapshots. | S |
+| E4 | Glossary first show 270 ms; ~100 ms on later shows. 120 `ListBoxRow`s each with three wrapped labels and a `Revealer` body. | Profile: time is inside `stack.set_visible_child_name` (GTK size allocation), not Python. | Build the revealer body on first expand only; create rows for the visible category lazily. | S |
+| E5 | Button press feedback fades over 200 ms (theme transition) — see A1. | Mint-Y gtk.css. | `button { transition: none }` in `app.css`. | XS |
+
+Not causes (ruled out by measurement): scheduler `systemctl` calls (12 ms even under disk load),
+settings saves (2 ms), the 16 ms drain budget (p95 6 ms during scans), `lsblk` refresh (14 ms).
