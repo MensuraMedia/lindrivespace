@@ -232,4 +232,14 @@ Not a file manager (no move / copy / rename), no background daemon, no remote or
 
 ## License
 
-Free for personal and educational use (inherits the starter's terms until a licence file is added).
+LinDriveSpace is free to **use, share and modify for any noncommercial purpose** — at home, in
+education, research, charities and public institutions. **Commercial use needs our express
+consent first**: if you would like to sell it, bundle it with a product or service, or run it
+inside a business, please open an issue or discussion on this repository and we will be glad to
+talk it through.
+
+The binding terms are the [PolyForm Noncommercial License 1.0.0](LICENSE.md), a licence written
+specifically for software with exactly these conditions. Please keep the licence file and the
+notice below with any copy you pass on.
+
+Required Notice: Copyright MensuraMedia (https://github.com/MensuraMedia/lindrivespace)

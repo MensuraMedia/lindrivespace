@@ -25,6 +25,7 @@ install -m 644 "$SRC/data/$APP_ID.metainfo.xml" "$BUILD/usr/share/metainfo/"
 install -m 755 "$SRC/data/bin/lindrivespace-scan-helper" "$BUILD/usr/libexec/lindrivespace/"
 install -m 644 "$SRC/data/polkit/$APP_ID.policy" "$BUILD/usr/share/polkit-1/actions/"
 install -m 644 "$SRC/README.md" "$BUILD/usr/share/doc/lindrivespace/README.md"
+install -m 644 "$SRC/LICENSE.md" "$BUILD/usr/share/doc/lindrivespace/copyright"
 gzip -9n -c "$SRC/changelog.md" > "$BUILD/usr/share/doc/lindrivespace/changelog.gz"
 sed "s|__ROOT__|/usr/lib/lindrivespace|" "$SRC/bin/lindrivespace" > "$BUILD/usr/bin/lindrivespace"
 # the package keeps data under /usr/share/lindrivespace: point the launcher there

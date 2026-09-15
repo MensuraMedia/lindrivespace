@@ -75,3 +75,11 @@ SendMessage. Accepted trade-offs it reports are recorded here.
 4. `list_snapshots()` reads only the gzip header (meta + root total; `save_snapshot` writes
    `alloc` into meta) — 16 files / 59 MB no longer parsed per History click.
 5. Mint-Y's 200 ms button transition is disabled in app.css; Glossary bodies build on first expand.
+
+## 2026-09-16 — Licence: PolyForm Noncommercial 1.0.0 (user)
+Requirements: free to use, distribute and modify; commercial use prohibited without express
+consent; friendly wording. PolyForm Noncommercial is a software-specific licence with exactly
+those terms (Creative Commons NC licences match too but CC advises against them for software).
+`LICENSE.md` = plain-words preamble + full licence text + the Required Notice line;
+README, pyproject (`PolyForm-Noncommercial-1.0.0`), AppStream (`LicenseRef-…`), .deb copyright
+file and the installer carry it. Not OSI "open source" — say "source-available, noncommercial".

@@ -39,7 +39,7 @@ run rm -rf "$ROOT/src" "$ROOT/data"
 run cp -r "$SRC/src" "$ROOT/src"
 run cp -r "$SRC/data" "$ROOT/data"
 run find "$ROOT" \( -name __pycache__ -o -name "*.egg-info" \) -type d -exec rm -rf {} + 2>/dev/null || true
-run cp "$SRC/README.md" "$SRC/changelog.md" "$ROOT/" 2>/dev/null || true
+run cp "$SRC/README.md" "$SRC/LICENSE.md" "$SRC/changelog.md" "$ROOT/" 2>/dev/null || true
 
 # launcher with the install root baked in
 tmp="$(mktemp)"; sed "s|__ROOT__|$ROOT|" "$SRC/bin/lindrivespace" > "$tmp"

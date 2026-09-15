@@ -7,7 +7,7 @@
 - [ ] Orchestrator: wire "Scan as administrator" → services.privilege (context menu still prints TODO); Snapshots "Save current scan" reads explorer.model.root (verify).
 - [x] WP9 insight panel, WP12 settings — done 2026-09-15.
 - [ ] WP13: .deb packaging, desktop entry, AppStream metainfo, README screenshots of the real app.
-- [ ] Add a LICENSE file (user decision).
+- [x] LICENSE.md — PolyForm Noncommercial 1.0.0 with a plain-words preamble — done 2026-09-16.
 - [x] WP14 Favorites + Explorer star wiring — done 2026-09-15.
 - [x] Columns button + context item — done 2026-09-15.
 - [x] WP15 Glossary, WP16 Hardware, WP17 History (+ change drill-down), scheduler/collector — done 2026-09-15.

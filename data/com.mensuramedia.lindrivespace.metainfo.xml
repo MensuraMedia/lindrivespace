@@ -4,7 +4,7 @@
   <name>LinDriveSpace</name>
   <summary>See where your disk space goes</summary>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>LicenseRef-proprietary</project_license>
+  <project_license>LicenseRef-PolyForm-Noncommercial-1.0.0</project_license>
   <developer id="com.mensuramedia"><name>MensuraMedia</name></developer>
   <description>
     <p>LinDriveSpace is a native GTK 3 disk-space explorer for Linux Mint and other Debian-family desktops. It lists every mount and partition, scans them in the background, and lets you drill from folders down to files with apparent and allocated sizes, counts, share bars and last-modified dates.</p>
