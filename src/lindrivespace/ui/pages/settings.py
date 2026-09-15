@@ -198,6 +198,18 @@ class SettingsPage(BasePage):
             )
         )
 
+        self.top_min_spin = Gtk.SpinButton.new_with_range(0, 1_048_576, 16)
+        self.top_min_spin.set_value(int(self.settings.get("scan.top_min_bytes", 65_536)) // 1024)
+        self.top_min_spin.connect("value-changed", self._on_top_min_changed)
+        group.add_row(
+            PrefRow(
+                "Smallest file kept for analysis (KB)",
+                self.top_min_spin,
+                "Files below this size are counted but not listed in Top files / Types / Age. "
+                "64 KB skips 90 % of files for under 3 % of the bytes; 0 keeps every file.",
+            )
+        )
+
         self.pack_start(group, False, False, 0)
         self.scanning_group = group
 
@@ -215,6 +227,9 @@ class SettingsPage(BasePage):
 
     def _on_top_files_changed(self, spin: Gtk.SpinButton) -> None:
         self._persist("scan.top_files", spin.get_value_as_int())
+
+    def _on_top_min_changed(self, spin: Gtk.SpinButton) -> None:
+        self._persist("scan.top_min_bytes", spin.get_value_as_int() * 1024)
 
     # ---- Exclusions ---------------------------------------------------------
 
@@ -704,6 +719,7 @@ class SettingsPage(BasePage):
         )
         self.show_hidden_switch.set_active(bool(self.settings.get("scan.show_hidden", True)))
         self.top_files_spin.set_value(int(self.settings.get("scan.top_files", 50)))
+        self.top_min_spin.set_value(int(self.settings.get("scan.top_min_bytes", 65_536)) // 1024)
 
         self._rebuild_excludes_list()
 

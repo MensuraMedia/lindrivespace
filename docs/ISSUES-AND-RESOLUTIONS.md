@@ -152,6 +152,25 @@ Legend: **Symptom** what was seen · **Cause** verified root cause · **Fix** wh
 - **Fix:** `report_error` can no longer raise (no-show-all-safe `show_all()`), and
   `logsetup._report` unregisters a reporter the first time it fails.
 
+### 2.10 Main-loop stalls of 0.3–1.8 s while History compared scans (GIL)
+- **Symptom:** clicks felt late during and after scans; the walkthrough logged 184 stalls.
+- **Cause:** the History diff ran on a thread: `list_snapshots()` fully parsed every kept snapshot
+  (16 files, 59 MB gz) and `load_snapshot()` held the GIL inside gzip/JSON/node rebuild.
+- **Fix:** header-only listing (`alloc` stored in meta) and the diff + autosave in a forked child
+  (`services/forkwork.py`). **Guard:** `tests/services/test_forkwork.py`,
+  `test_list_snapshots_reads_only_the_header`; walkthrough stall count.
+
+### 2.11 343 ms garbage-collector pauses with three scan trees retained
+- **Cause:** 2.1 M tracked objects; every full collection walked them, triggered by allocation on
+  the drain or the scanner thread.
+- **Fix:** `gc.freeze()` during/after scans; trees dropped by breaking cycles in `reset()`.
+  **Guard:** `test_reset_breaks_parent_child_cycles`; `gc.collect()` after freeze measured 0 ms.
+
+### 2.12 Largest-files ring = two thirds of tree memory and 2.5× scan time
+- **Fix:** `ScanOptions.top_min_bytes` (64 KB default, Settings › Scanning). /home: 86 → 36 MB,
+  ring 232 644 → 22 753 entries; 2.6 % of bytes leave the analysis estimate.
+  **Guard:** `test_top_min_bytes_keeps_small_files_out_of_the_ring`.
+
 ## 3. History, scheduler, collector
 
 ### 3.1 Trend chart x-axis labels overlapped at high point density

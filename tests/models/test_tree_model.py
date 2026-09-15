@@ -267,3 +267,20 @@ def test_file_rows_interleaved_with_folders(tmp_path) -> None:  # type: ignore[n
     m.set_sort("name", False)
     names = [r[0] for r in rows(m, root_it)]
     assert names == sorted(names, key=str.casefold)
+
+
+def test_reset_breaks_parent_child_cycles() -> None:
+    from lindrivespace.core.events import DirDone, DirStarted, Finished
+    from lindrivespace.models.tree_model import ScanTreeModel
+
+    model = ScanTreeModel()
+    model.apply(DirStarted(1, None, "/r", 0.0, 0))
+    model.apply(DirStarted(2, 1, "child", 0.0, 0))
+    model.apply(DirDone(2, 10, 10, 1, 0, 0.0, 0, ()))
+    model.apply(DirDone(1, 10, 10, 1, 1, 0.0, 0, ()))
+    model.apply(Finished(1, 2, 0.1, False))
+    model.flush()
+    root, child = model.nodes[1], model.nodes[2]
+    assert child.parent is root and root.children == [child]
+    model.reset()
+    assert child.parent is None and root.children == [] and model.nodes == {}

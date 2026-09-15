@@ -77,6 +77,7 @@ class Scanner:
         seen_inodes: set[tuple[int, int]] = set()
         show_hidden = options.show_hidden
         count_hardlinks_once = options.count_hardlinks_once
+        top_min = max(0, int(options.top_min_bytes))
         cross_mounts = options.cross_mounts
         is_excluded = options.is_excluded
         batch_size = options.batch_size
@@ -212,7 +213,7 @@ class Scanner:
                         seen_inodes.add(key)
 
                 if add_it:
-                    node.add_file(size, alloc, st.st_mtime, name)
+                    node.add_file(size, alloc, st.st_mtime, name, alloc >= top_min)
                     alloc_total += alloc
 
             now = time.monotonic()

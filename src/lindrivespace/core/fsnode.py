@@ -83,14 +83,18 @@ class FsNode:
 
     # ---- building ---------------------------------------------------------
 
-    def add_file(self, size: int, alloc: int, mtime: float, name: str) -> None:
-        """Account for one regular file directly inside this directory."""
+    def add_file(self, size: int, alloc: int, mtime: float, name: str, keep: bool = True) -> None:
+        """Account for one regular file directly inside this directory.
+
+        ``keep=False`` counts the file but keeps it out of the largest-files ring
+        (the scanner passes it for files below ``ScanOptions.top_min_bytes``).
+        """
         self.size += size
         self.alloc += alloc
         self.files += 1
         if mtime > self.mtime_max:
             self.mtime_max = mtime
-        if self.top_limit <= 0:
+        if self.top_limit <= 0 or not keep:
             return
         entry = TopFile(alloc, size, mtime, name)
         if len(self._top) < self.top_limit:

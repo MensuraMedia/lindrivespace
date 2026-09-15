@@ -475,3 +475,18 @@ def test_cli_missing_root_exits_1() -> None:
         check=False,
     )
     assert result.returncode == 1
+
+
+def test_top_min_bytes_keeps_small_files_out_of_the_ring(tmp_path: Path) -> None:
+    from lindrivespace.core.options import ScanOptions
+    from lindrivespace.core.scanner import Scanner
+
+    d = tmp_path / "ring"
+    d.mkdir()
+    (d / "big.bin").write_bytes(b"x" * 200_000)
+    (d / "small.txt").write_bytes(b"y" * 10_000)
+    root = Scanner().scan(str(d), ScanOptions(top_min_bytes=65_536), lambda e: None)
+    assert root.files == 2 and root.size == 210_000  # totals count everything
+    assert [t.name for t in root.top_files] == ["big.bin"]
+    root_all = Scanner().scan(str(d), ScanOptions(top_min_bytes=0), lambda e: None)
+    assert {t.name for t in root_all.top_files} == {"big.bin", "small.txt"}

@@ -31,6 +31,7 @@ DEFAULTS: dict[str, Any] = {
         "show_hidden": True,
         "excludes": list(DEFAULT_EXCLUDES),
         "top_files": 50,
+        "top_min_bytes": 65536,  # files smaller than this stay out of the largest-files ring
         "auto_on_start": True,  # scan every visible mount a few seconds after launch
     },
     "mounts": {

@@ -168,6 +168,13 @@ button {
   color: @fg;
   padding: 3px 10px;
   text-shadow: none;
+  transition: none; /* Mint-Y fades button states over 200 ms; clicks looked late */
+}
+.nav-button,
+checkbutton,
+radiobutton,
+switch {
+  transition: none;
 }
 button:hover {
   background-color: @bg_surface;

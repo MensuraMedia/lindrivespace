@@ -218,6 +218,7 @@ def save_snapshot(root: FsNode, path: Path, meta: dict[str, Any] | None = None) 
     full_meta["saved_at"] = datetime.now(timezone.utc).isoformat()
     full_meta["root_path"] = root.path()
     full_meta["entries"] = root.dirs + 1
+    full_meta["alloc"] = int(root.alloc)  # lets list_snapshots() read the header only
 
     meta_json = json.dumps(full_meta, sort_keys=True)
     root_json = _node_tree_to_json(root)
@@ -284,11 +285,36 @@ class SnapshotMeta:
     alloc: int
 
 
+_HEADER_BYTES = 8192
+
+
+def _read_header(entry: Path) -> tuple[dict[str, Any], int] | None:
+    """Parse only the leading ``meta`` object (and the root's ``"a"`` total) of a
+    snapshot. Reads a few KB of the gzip stream instead of the whole file, so
+    listing a folder of large snapshots is cheap (see docs/BACKLOG.md E1)."""
+    with gzip.open(entry, "rt", encoding="utf-8") as fh:
+        head = fh.read(_HEADER_BYTES)
+    version = re.search(r'"version":\s*(\d+)', head)
+    if version is None or int(version.group(1)) != _FORMAT_VERSION:
+        return None
+    key = head.find('"meta":')
+    if key < 0:
+        return None
+    start = head.index("{", key)
+    meta, _end = json.JSONDecoder().raw_decode(head, start)
+    if not isinstance(meta, dict):
+        return None
+    if "alloc" in meta:
+        return meta, int(meta["alloc"])
+    root_alloc = re.search(r'"root":\s*\{"n":.*?,"s":\d+,"a":(\d+)', head, re.DOTALL)
+    return (meta, int(root_alloc.group(1))) if root_alloc else (meta, -1)
+
+
 def list_snapshots(directory: Path) -> list[SnapshotMeta]:
     """List snapshots under `directory`, newest first.
 
-    Reads each file's meta by parsing the whole (small, compressed) JSON
-    document once -- acceptable for v1 (see the design doc). Unreadable or
+    Reads only each file's header (``meta`` + the root total); falls back to a
+    full parse for files whose header cannot be read that way. Unreadable or
     malformed files are skipped.
     """
     if not directory.exists():
@@ -296,16 +322,21 @@ def list_snapshots(directory: Path) -> list[SnapshotMeta]:
     results: list[SnapshotMeta] = []
     for entry in sorted(directory.glob("*.json.gz")):
         try:
-            with gzip.open(entry, "rt", encoding="utf-8") as fh:
-                data = _parse_json_text(fh.read())
-        except (OSError, ValueError) as exc:
+            header = _read_header(entry)
+            if header is not None and header[1] >= 0:
+                meta, alloc = header
+            else:  # old or odd file: full parse (slow path)
+                with gzip.open(entry, "rt", encoding="utf-8") as fh:
+                    data = _parse_json_text(fh.read())
+                if not isinstance(data, dict):
+                    continue
+                meta = data.get("meta", {})
+                root = data.get("root", {})
+                if not isinstance(meta, dict) or not isinstance(root, dict):
+                    continue
+                alloc = int(root.get("a", 0))
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
             print(f"snapshot: skipping unreadable {entry}: {exc}", file=sys.stderr)
-            continue
-        if not isinstance(data, dict):
-            continue
-        meta = data.get("meta", {})
-        root = data.get("root", {})
-        if not isinstance(meta, dict) or not isinstance(root, dict):
             continue
         results.append(
             SnapshotMeta(
@@ -313,7 +344,7 @@ def list_snapshots(directory: Path) -> list[SnapshotMeta]:
                 root_path=str(meta.get("root_path", "")),
                 saved_at=str(meta.get("saved_at", "")),
                 entries=int(meta.get("entries", 0)),
-                alloc=int(root.get("a", 0)),
+                alloc=alloc,
             )
         )
     results.sort(key=lambda m: m.saved_at, reverse=True)

@@ -23,7 +23,6 @@ thin alias for anything still importing the old name.
 from __future__ import annotations
 
 import os
-import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -40,6 +39,7 @@ from lindrivespace.core import changes  # noqa: E402
 from lindrivespace.core.history import PERIODS, HistoryStore, Pattern  # noqa: E402
 from lindrivespace.core.snapshot import default_snapshot_dir  # noqa: E402
 from lindrivespace.core.units import format_bytes  # noqa: E402
+from lindrivespace.services import forkwork  # noqa: E402
 from lindrivespace.ui.pages.base import BasePage  # noqa: E402
 from lindrivespace.ui.widgets.kpi_tile import KpiTile  # noqa: E402
 from lindrivespace.ui.widgets.settings_rows import PrefGroup  # noqa: E402
@@ -502,15 +502,21 @@ class HistoryPage(BasePage):
         period = self._period
         directory = self.snapshot_dir
 
-        def work() -> None:
-            try:
-                count = changes.snapshot_count(directory, path)
-                report = changes.change_report(directory, path, period) if count >= 2 else None
-                GLib.idle_add(self._fill_change_panel, generation, path, count, report, None)
-            except Exception as exc:  # noqa: BLE001 - show the error in the card instead
-                GLib.idle_add(self._fill_change_panel, generation, path, 0, None, str(exc))
+        # Loading two snapshots (gzip + JSON + node rebuild) is pure CPU that held the
+        # interpreter lock for up to 1.8 s on a thread; a forked child leaves the UI alone.
+        def work() -> tuple[int, changes.ChangeReport | None]:
+            count = changes.snapshot_count(directory, path)
+            report = changes.change_report(directory, path, period) if count >= 2 else None
+            return count, report
 
-        threading.Thread(target=work, name="history-changes", daemon=True).start()
+        def done(result: object, error: str | None) -> None:
+            if error or not isinstance(result, tuple):
+                self._fill_change_panel(generation, path, 0, None, error or "no result")
+            else:
+                count, report = result
+                self._fill_change_panel(generation, path, count, report, None)
+
+        forkwork.run_in_child(work, done)
 
     def _fill_change_panel(
         self,

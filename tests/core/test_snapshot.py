@@ -224,3 +224,39 @@ def test_diff_snapshots_respects_max_depth() -> None:
 
     entries_deep = diff_snapshots(a, b, min_delta=1_000, max_depth=2)
     assert any(e.path == "sub/deep" for e in entries_deep)
+
+
+def test_list_snapshots_reads_only_the_header(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from lindrivespace.core import snapshot as snap
+
+    root = _build_three_level_tree()
+    target = tmp_path / "a.json.gz"
+    save_snapshot(root, target)
+    calls: list[str] = []
+    real = snap._parse_json_text
+
+    def spy(text: str):  # type: ignore[no-untyped-def]
+        calls.append("full")
+        return real(text)
+
+    monkeypatch.setattr(snap, "_parse_json_text", spy)
+    metas = list_snapshots(tmp_path)
+    assert calls == []  # header path only
+    assert metas[0].alloc == root.alloc and metas[0].root_path == root.path()
+    assert metas[0].entries == root.dirs + 1
+
+
+def test_list_snapshots_falls_back_for_files_without_alloc_in_meta(tmp_path: Path) -> None:
+    import gzip
+    import json
+
+    root = _build_three_level_tree()
+    target = tmp_path / "old.json.gz"
+    save_snapshot(root, target)
+    with gzip.open(target, "rt", encoding="utf-8") as fh:
+        data = json.load(fh)
+    del data["meta"]["alloc"]
+    with gzip.open(target, "wt", encoding="utf-8") as fh:
+        json.dump(data, fh)  # json.dump spacing differs from the writer's: header regex fails
+    metas = list_snapshots(tmp_path)
+    assert metas[0].alloc == root.alloc

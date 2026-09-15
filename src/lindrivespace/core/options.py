@@ -26,6 +26,7 @@ class ScanOptions:
     show_hidden: bool = True
     excludes: tuple[str, ...] = DEFAULT_EXCLUDES
     top_files: int = 50  # per-directory ring of largest files (0 = keep none)
+    top_min_bytes: int = 65_536  # files below this never enter the ring (memory + speed)
     batch_size: int = 5000  # events per batch before a Progress heartbeat
     progress_interval: float = 0.1  # seconds between Progress events
 

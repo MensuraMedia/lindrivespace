@@ -130,11 +130,13 @@ class GlossaryPage(BasePage):
         summary_label.get_style_context().add_class("dim")
         outer.pack_start(summary_label, False, False, 0)
 
+        # The body (long text + See-also links) is built on first expand: laying out
+        # 120 of them up front made the page's first show take ~270 ms.
         revealer = Gtk.Revealer()
         revealer.set_reveal_child(False)
-        revealer.add(self._build_body_box(term))
         outer.pack_start(revealer, False, False, 0)
         row.revealer = revealer  # type: ignore[attr-defined]
+        row.term = term  # type: ignore[attr-defined]
 
         row.add(outer)
         return row
@@ -249,6 +251,9 @@ class GlossaryPage(BasePage):
         was_expanded = revealer.get_reveal_child()
         self._collapse_all()
         if not was_expanded:
+            if revealer.get_child() is None:
+                revealer.add(self._build_body_box(row.term))  # type: ignore[attr-defined]
+                revealer.show_all()
             revealer.set_reveal_child(True)
             self._expanded_key = key
 

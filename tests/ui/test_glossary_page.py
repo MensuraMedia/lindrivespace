@@ -115,3 +115,14 @@ def test_sidebar_has_glossary_button(window) -> None:  # type: ignore[no-untyped
     assert "glossary" in window.sidebar.buttons
     window.sidebar.buttons["glossary"].clicked()
     assert window.current_page_id == "glossary"
+
+
+def test_glossary_bodies_are_built_on_first_expand(window) -> None:  # type: ignore[no-untyped-def]
+    window.show_page("glossary")
+    page = window.pages["glossary"]
+    key, row = next(iter(page._rows_by_key.items()))
+    assert row.revealer.get_child() is None  # nothing built up front
+    page._toggle_row(key)
+    assert row.revealer.get_child() is not None and row.revealer.get_reveal_child()
+    page._toggle_row(key)
+    assert not row.revealer.get_reveal_child()

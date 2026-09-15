@@ -252,6 +252,12 @@ class ScanTreeModel:
     def reset(self) -> None:
         self.store.clear()
         self.root = None
+        # Break parent<->children cycles so the old tree is freed by reference
+        # counting: retained trees are gc.freeze()'d (see app.py) and would
+        # otherwise never be collected.
+        for node in self.nodes.values():
+            node.children.clear()
+            node.parent = None
         self.nodes.clear()
         self.iters.clear()
         self.populated.clear()

@@ -59,3 +59,19 @@ are attributed to their folder row only. Change threshold 1 MB, depth 6.
 An Opus, read-only `adversarial-reviewer` agent red-teams designs/methods before a WP is built
 and diffs before they are committed, collaborating with the implementer/code-reviewer over
 SendMessage. Accepted trade-offs it reports are recorded here.
+
+## 2026-09-15 — Performance fixes (contract change + process model)
+1. `ScanOptions.top_min_bytes` (frozen contract, additive, default 64 KB; setting
+   `scan.top_min_bytes`, Settings › Scanning "Smallest file kept for analysis"): files below it are
+   counted in totals but never enter a folder's largest-files ring. Measured on /home: 90 % of
+   files, 2.6 % of bytes; tree memory 86 → 36 MB. Top files / Types / Age stay estimates from the
+   ring (they always were) and now say so for files above the threshold.
+2. CPU-heavy work that must not hold the UI's interpreter lock (snapshot save, History diff)
+   runs in a **forked child** (`services/forkwork.py`), never on a thread: gzip/JSON/node
+   rebuild held the GIL for 0.3–1.8 s per stretch. Child = pure Python + file I/O, `os._exit`.
+3. Retained scan trees are moved out of the cyclic GC (`gc.freeze()` every 2 s during a scan and
+   at scan end); a dropped tree has its parent/children links broken in `ScanTreeModel.reset()`
+   so reference counting frees it. Full collections with three trees live cost 343 ms → 0 ms.
+4. `list_snapshots()` reads only the gzip header (meta + root total; `save_snapshot` writes
+   `alloc` into meta) — 16 files / 59 MB no longer parsed per History click.
+5. Mint-Y's 200 ms button transition is disabled in app.css; Glossary bodies build on first expand.

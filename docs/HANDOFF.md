@@ -105,6 +105,7 @@ GtkTreeStore); everything displayed is formatted at draw time.
 - Every finished scan is auto-saved as a snapshot (12 per root) so History can show *where* space changed.
 - Menu check/radio items, switches, radios and checks are accent orange when on, grey when off (theme bitmaps overridden).
 - An adversarial-reviewer agent (Opus, read-only) red-teams designs and diffs and collaborates with other agents.
+- CPU-heavy background work (snapshot save, History diff) runs in a forked child (`services/forkwork.py`), never a thread; retained trees are `gc.freeze()`d; files < 64 KB stay out of the largest-files ring (`scan.top_min_bytes`).
 
 ## 6. Known issues and open items (also in `.claude/memory/pending.md`)
 

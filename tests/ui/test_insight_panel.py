@@ -75,7 +75,13 @@ def page(window):  # type: ignore[no-untyped-def]
     page = window.pages["explorer"]
     if not page.has_side_panel:  # an earlier collapse test may have hidden it
         page.set_panel_visible(True)
-    return page
+    # The fixture tree is made of tiny files; the default 64 KB analysis threshold
+    # (scan.top_min_bytes) would keep them all out of the Top files / Types / Age views.
+    settings = window.app.settings
+    previous = settings.get("scan.top_min_bytes", 65_536)
+    settings.set("scan.top_min_bytes", 0)
+    yield page
+    settings.set("scan.top_min_bytes", previous)
 
 
 def _scan_and_select_root(page, tmp_path: Path):  # type: ignore[no-untyped-def]

@@ -162,6 +162,7 @@ class LinDriveSpaceApp(Gtk.Application):
             show_hidden=bool(scan.get("show_hidden", True)),
             excludes=tuple(scan.get("excludes", DEFAULT_EXCLUDES)),
             top_files=int(scan.get("top_files", 50)),
+            top_min_bytes=int(scan.get("top_min_bytes", 65_536)),
         )
 
     # ---- startup auto-scan -----------------------------------------------------
@@ -203,44 +204,46 @@ class LinDriveSpaceApp(Gtk.Application):
 
     def autosave_snapshot(self, path: str, entry: object) -> None:
         """Keep a compact snapshot of every finished scan so History can show *where*
-        space changed (folder/file diffs between two points in time). Serialising a
-        large tree takes seconds, so it runs on a worker thread; the FsNode tree is
-        immutable once a scan has finished."""
+        space changed. Serialising a large tree takes seconds of pure CPU, so it runs
+        in a forked child (copy-on-write: no pickling, and the UI's interpreter lock
+        stays free -- a thread stalled the main loop, see docs/BACKLOG.md E1)."""
         model = getattr(entry, "model", None)
         root = getattr(model, "root", None)
         if root is None:
             return
-        import threading
+        from lindrivespace.services import forkwork
 
         keep = self.KEEP_SNAPSHOTS_PER_PATH
-        log = self.log
 
-        def work() -> None:
-            try:
-                from lindrivespace.core.snapshot import (
-                    default_snapshot_dir,
-                    list_snapshots,
-                    save_snapshot,
-                    snapshot_filename,
-                )
+        def work() -> int:
+            from lindrivespace.core.snapshot import (
+                default_snapshot_dir,
+                list_snapshots,
+                save_snapshot,
+                snapshot_filename,
+            )
 
-                directory = default_snapshot_dir()
-                directory.mkdir(parents=True, exist_ok=True)
-                save_snapshot(root, directory / snapshot_filename(path), {"auto": True})
-                mine = sorted(
-                    (m for m in list_snapshots(directory) if m.root_path == path),
-                    key=lambda m: m.saved_at,
-                )
-                for old in mine[:-keep]:
-                    try:
-                        Path(old.path).unlink()
-                    except OSError:
-                        pass
-                log.info("snapshot saved for %s (%d kept)", path, min(len(mine), keep))
-            except Exception as exc:  # noqa: BLE001 - bookkeeping must never break the app
-                log.warning("auto snapshot failed for %s: %s", path, exc)
+            directory = default_snapshot_dir()
+            directory.mkdir(parents=True, exist_ok=True)
+            save_snapshot(root, directory / snapshot_filename(path), {"auto": True})
+            mine = sorted(
+                (m for m in list_snapshots(directory) if m.root_path == path),
+                key=lambda m: m.saved_at,
+            )
+            for old in mine[:-keep]:
+                try:
+                    Path(old.path).unlink()
+                except OSError:
+                    pass
+            return min(len(mine), keep)
 
-        threading.Thread(target=work, name=f"snapshot:{path}", daemon=True).start()
+        def done(result: object, error: str | None) -> None:
+            if error:
+                self.log.warning("auto snapshot failed for %s: %s", path, error)
+            else:
+                self.log.info("snapshot saved for %s (%s kept)", path, result)
+
+        forkwork.run_in_child(work, done)
 
     def _auto_scan_tick(self) -> bool:
         """Wait (up to ~20 s) for the mount list, then queue every mount."""
