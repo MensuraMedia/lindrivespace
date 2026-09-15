@@ -117,7 +117,7 @@ GtkTreeStore); everything displayed is formatted at draw time.
 6. Bind mounts of the same device are listed but not scanned separately; btrfs/zfs allocated ≠ fs usage (documented in the glossary).
 7. Page gutters: every `BasePage` paints its own 24 px gutter as CSS padding (`.page.page-padded`); never reintroduce widget margins on pages or GdkWindow background hacks (both produced black bands on resize).
 8. "Where space changed" needs two kept snapshots of a mount; file rows come from each folder's 50 largest files, so smaller files are attributed to their folder only.
-10. The UI test fixture does not isolate `Settings()`/XDG dirs; tests must point stores at `tmp_path` (ISSUES §3.2). A per-session XDG override in `tests/ui/conftest.py` would close this.
+10. Fixed 2026-09-16: the UI test fixture builds the shared window with its own config/cache/log directories (ISSUES §3.2).
 9. Agents: `.claude/agents/adversarial-reviewer.md` (Opus, read-only) red-teams designs and diffs and collaborates with implementer/code-reviewer agents via SendMessage; see `.claude/routing-rules.md`.
 
 ## 7. Process for continuing

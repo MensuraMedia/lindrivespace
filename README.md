@@ -4,7 +4,7 @@
 See every mount and partition at a glance, then drill into folders and files to find out exactly
 what is eating your disk — TreeSize / WizTree style, with Linux-correct numbers.
 
-![Overview](docs/screenshots/overview.png)
+![Explorer](docs/screenshots/explorer.png)
 
 > Status: **v0.1 — installable** (2026-09). Every screen below is built and packaged (`.deb`,
 > installer script, menu entry); see [Install and run](#install-and-run) and the [Roadmap](#roadmap).
@@ -27,7 +27,6 @@ Ubuntu's typeface and colour language.
 ## Features
 
 ### Overview — mounts and partitions
-*(Pictured at the top of this page.)*
 - **One list**: disks as section rows and one sortable row per mount with device, type, used, free, total, an inline used-% bar and a star; double-click to scan, right-click for Scan, Open, Favorite and primary/secondary. Columns can be reordered, resized and hidden.
 - **Scans start by themselves.** A couple of seconds after launch every physical mount is queued (primary, secondary, `/`, then the rest). A scan strip at the top of the content area shows the running scan with a real progress bar (scanned of the mount's used space), the rate and an estimated countdown, plus Pause and Stop. Turn the auto-scan off under Settings › Scanning.
 - Every mounted filesystem grouped by physical disk (NVMe, SATA, USB, loop), with label, device, filesystem type, used / free / total and a usage bar that turns amber at 85 % and red at 95 %.
@@ -36,6 +35,8 @@ Ubuntu's typeface and colour language.
 - Live hot-plug: USB drives appear and disappear as they are attached (udev monitor).
 - Noise hidden by default: snap `squashfs` loops, `tmpfs`, `proc`, `sysfs`, Docker overlays. One chip reveals them.
 - "Scan" on any row, or scan an arbitrary folder (file chooser, drag-and-drop, or `lindrivespace /path`).
+
+![Overview — mounts and partitions](docs/screenshots/overview.png)
 
 ### Explorer — folders and files
 - Tree-table columns: **Name · Size · Allocated · Files · Folders · % of Parent · Modified** (Owner and Type optional).
@@ -50,7 +51,7 @@ Ubuntu's typeface and colour language.
   administrator through a polkit prompt — the elevated helper is a tiny stdlib-only process, never the GUI.
 - Cancel, pause, rescan a subtree, exclude a folder.
 
-![Explorer — /home with the user folder expanded](docs/screenshots/explorer.png)
+*(Pictured at the top of this page.)*
 
 ### Insight panel (Analysis view, collapsible)
 - **Treemap** (squarified) of the selected row; click to select, double-click to zoom.

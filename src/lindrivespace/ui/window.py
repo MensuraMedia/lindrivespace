@@ -57,9 +57,7 @@ class MainWindow(Gtk.ApplicationWindow):
         header.set_show_close_button(True)
         header.get_style_context().add_class("lds-header")
 
-        # One label renders "LinDriveSpace — Overview" so the app name, dash and page
-        # name share a single baseline and ordinary word spacing (separate labels in a
-        # box sat on the same baseline but the dash's side bearings made the gaps uneven).
+        # The header shows only the app name; the page is evident from the sidebar.
         self.title_label = Gtk.Label()
         self.title_label.get_style_context().add_class("header-title")
         self.title_label.set_xalign(0.0)
@@ -232,13 +230,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self._render_title()
 
     def _render_title(self) -> None:
-        name = GLib.markup_escape_text(APP_NAME)
-        if self._page_title:
-            page = GLib.markup_escape_text(self._page_title)
-            muted = self.app.theme.fg_muted
-            self.title_label.set_markup(f'{name} <span foreground="{muted}">\u2014 {page}</span>')
-        else:
-            self.title_label.set_markup(name)
+        # Only the app name: the active sidebar button already names the page.
+        self.title_label.set_markup(GLib.markup_escape_text(APP_NAME))
 
     def show_page(self, page_id: str) -> None:
         if page_id not in self.pages or page_id == self.current_page_id:

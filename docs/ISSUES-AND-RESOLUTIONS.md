@@ -185,8 +185,10 @@ Same walkthrough after the fixes: 1 stall > 150 ms (was 105), slowest click 53 m
 - **Cause:** the session-scoped window fixture does not isolate `Settings()`.
 - **Fix:** manual verification scripts point `snapshot_dir` / `HistoryStore` at `tmp_path`;
   the stray keys were removed from `~/.config/lindrivespace/settings.json`.
-- **Open:** a per-session XDG override for the UI fixture would make this impossible (see
-  HANDOFF §6).
+- **Fixed 2026-09-16:** the session window fixture now builds the app with its own
+  config/cache/log directories and an explicit `Settings` path (`tests/ui/conftest.py`); the
+  real settings file's mtime is unchanged by a full run. The Explorer column-reorder test had
+  been the one leaking a "Modified second, 480 px" layout into the developer's settings.
 
 ### 3.3 Racy UI test for the change panel
 - **Symptom:** one intermittent failure of `test_clicking_change_with_one_snapshot_explains`.

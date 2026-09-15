@@ -43,7 +43,7 @@ session. Companion documents: `docs/ISSUES-AND-RESOLUTIONS.md` (resolved problem
 
 | # | Finding | Proposed fix |
 |---|---|---|
-| D1 | The session-scoped UI window fixture uses the real `~/.config` and `~/.cache`; tests that touch settings must restore them by hand (one test wrote `history.period` into the real file). | Set `XDG_CONFIG_HOME` / `XDG_CACHE_HOME` / `LINDRIVESPACE_LOG_DIR` to a tmp dir in `tests/ui/conftest.py` before the app is built. |
+| D1 | **[fixed 2026-09-16]** The session-scoped UI window fixture used the real `~/.config` and `~/.cache`: the Explorer column-reorder test had written "Modified" as the second column (480 px) into the developer's settings. `tests/ui/conftest.py` now gives the shared window its own config/cache/log directories and an explicit `Settings` path; verified by mtime that the suite no longer touches `~/.config/lindrivespace/settings.json`. | — |
 | D2 | `jq` still missing → universal hooks are inert. | `sudo apt install jq`. |
 
 ## E. Verified root causes — scripted walkthrough of every feature (2026-09-15)

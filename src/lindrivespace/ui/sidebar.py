@@ -36,7 +36,7 @@ class Sidebar(Gtk.Box):
 
     def _build_logo_area(self) -> None:
         dims = Layout.dimensions
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)  # air between mark and name
         box.set_size_request(dims.SIDEBAR_WIDTH, dims.LOGO_AREA_HEIGHT)
         box.set_valign(Gtk.Align.FILL)
         box.get_style_context().add_class("logo-area")
