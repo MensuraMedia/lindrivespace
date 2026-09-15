@@ -369,7 +369,7 @@
   function treeHtml(node, opts={}){
     const cols = opts.owner ? 'tt wide' : opts.compact ? 'tt compact' : 'tt';
     let h = `<div class="${cols}">
-      <div class="h">Name</div><div class="h r">Size</div><div class="h r">Allocated <span class="sort">▼</span></div>${opts.compact?'':'<div class="h r">Files</div><div class="h r">Folders</div>'}<div class="h">% of Parent (Allocated)</div><div class="h">Modified</div>${opts.owner?'<div class="h">Owner</div>':''}`;
+      <div class="h">Name</div><div class="h r">Size</div><div class="h r">Allocated <span class="sort">▼</span></div>${opts.compact?'':'<div class="h r">Files</div><div class="h r">Folders</div>'}<div class="h">Share %</div><div class="h">Modified</div>${opts.owner?'<div class="h">Owner</div>':''}`;
     let i=0;
     const walk=(nd,depth,parent)=>{
       const pct = parent ? (nd.alloc/parent.alloc*100) : 100;

@@ -8,3 +8,4 @@
 - [ ] Group C: WP9 insight panel (treemap/top files/types/age), WP12 settings page + light tokens + a11y, WP13 .deb + desktop + metainfo + README screenshots.
 - [ ] Add a LICENSE file (user decision).
 - [ ] WP14 Favorites: services/favorites.py + page (agent); orchestrator wires the star into the Explorer context menu/breadcrumb after WP9.
+- [ ] After WP9: add a 'Columns' MenuButton to the Explorer toolbar (reuse ExplorerTree._build_column_menu) and a 'Columns…' item in the row context menu for discoverability (user request 2026-09-15).

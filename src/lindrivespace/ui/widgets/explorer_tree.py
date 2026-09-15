@@ -33,7 +33,7 @@ COLUMN_DEFS: tuple[tuple[str, str, str, float, int, bool], ...] = (
     ("alloc", "Allocated", "alloc", 1.0, 90, True),
     ("files", "Files", "files", 1.0, 80, True),
     ("dirs", "Folders", "dirs", 1.0, 80, True),
-    ("percent", "% of Parent", "percent", 1.0, 160, True),
+    ("percent", "Share %", "percent", 1.0, 160, True),
     ("modified", "Modified", "modified", 0.0, 100, True),
     ("owner", "Owner", "owner", 0.0, 100, True),
     ("type", "Type", "type", 0.0, 80, True),
@@ -197,6 +197,10 @@ class ExplorerTree(Gtk.ScrolledWindow):
 
     def _attach_header_context_menu(self, column: Gtk.TreeViewColumn) -> None:
         button = column.get_button()
+        if button is not None and column.get_title() == "Share %":
+            button.set_tooltip_text(
+                "Share of the parent folder's size (allocated or apparent, per the toolbar toggle)"
+            )
         if button is not None:
             button.connect("button-press-event", self._on_header_button_press)
 
