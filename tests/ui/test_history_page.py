@@ -259,7 +259,7 @@ def test_change_tile_is_a_button_and_panel_starts_hidden(page) -> None:  # type:
 def test_clicking_change_with_one_snapshot_explains(page, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     page.snapshot_dir = tmp_path / "scans"
     page.change_button.clicked()
-    _pump_until(lambda: "scan" in page.change_summary.get_text().lower())
+    _pump_until(lambda: "Comparing" not in page.change_summary.get_text())
     assert page.change_summary.is_visible()
     assert "No completed scan" in page.change_summary.get_text()
     assert not page.change_frame.get_visible()
