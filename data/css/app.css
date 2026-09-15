@@ -29,8 +29,7 @@ headerbar.lds-header .header-title {
   color: @fg;
 }
 headerbar.lds-header .header-subtitle {
-  color: @fg_dim;
-  font-size: 9.5pt;
+  color: @fg_muted; /* same size and weight as the app name (.header-title); a shade lighter */
 }
 headerbar.lds-header button {
   background-color: transparent;

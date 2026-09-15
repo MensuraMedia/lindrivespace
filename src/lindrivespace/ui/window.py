@@ -60,9 +60,14 @@ class MainWindow(Gtk.ApplicationWindow):
         title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self.title_label = Gtk.Label(label=APP_NAME)
         self.title_label.get_style_context().add_class("header-title")
+        # "LinDriveSpace — Overview": page name at the same size as the app name.
+        self.title_dash = Gtk.Label(label="—")
+        self.title_dash.get_style_context().add_class("header-title")
         self.subtitle_label = Gtk.Label(label="")
+        self.subtitle_label.get_style_context().add_class("header-title")
         self.subtitle_label.get_style_context().add_class("header-subtitle")
         title_box.pack_start(self.title_label, False, False, 0)
+        title_box.pack_start(self.title_dash, False, False, 0)
         title_box.pack_start(self.subtitle_label, False, False, 0)
         header.pack_start(title_box)
 
