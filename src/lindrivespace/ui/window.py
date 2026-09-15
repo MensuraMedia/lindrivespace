@@ -212,13 +212,13 @@ class MainWindow(Gtk.ApplicationWindow):
         self.subtitle_label.set_text(self.specs[page_id].label)
         self.pages[page_id].on_shown()
 
-    def request_scan(self, path: str) -> None:
-        """Open the Explorer on ``path`` and start scanning (ExplorerPage.start_scan)."""
+    def request_scan(self, path: str, force: bool = False) -> None:
+        """Open the Explorer on ``path``; reuse a finished scan unless ``force``."""
         self.show_page("explorer")
         explorer = self.pages.get("explorer")
         start = getattr(explorer, "start_scan", None)
         if callable(start):
-            start(path)
+            start(path, force=force)
         else:
             print(f"scan requested for {path} (explorer not yet implemented)")
 

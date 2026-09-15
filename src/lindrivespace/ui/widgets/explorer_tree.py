@@ -65,6 +65,7 @@ class ExplorerTree(Gtk.ScrolledWindow):
         self.settings = settings
 
         self._columns: dict[str, Gtk.TreeViewColumn] = {}
+        self._bindings: list[tuple[Gtk.TreeViewColumn, Gtk.CellRenderer, str]] = []
         self._known_widths: dict[str, int] = {}
         self._loading = False
         self._order_save_pending = False
@@ -93,6 +94,32 @@ class ExplorerTree(Gtk.ScrolledWindow):
         self.restore_state()
 
     # ------------------------------------------------------------- columns
+
+    def _bind_cell(self, column: Gtk.TreeViewColumn, renderer: Gtk.CellRenderer, kind: str) -> None:
+        column.set_cell_data_func(renderer, self.model.cell_data_func(kind))
+        self._bindings.append((column, renderer, kind))
+
+    def set_model(self, model: ScanTreeModel) -> None:
+        """Show another scan (the registry keeps one model per root path)."""
+        if model is self.model:
+            return
+        self.model = model
+        self.treeview.set_model(model.store)
+        for column, renderer, kind in self._bindings:
+            column.set_cell_data_func(renderer, model.cell_data_func(kind))
+        self._apply_sort_indicator()
+        self.refresh()
+
+    def _apply_sort_indicator(self) -> None:
+        for cid, column in self._columns.items():
+            active = cid == self.model.sort_column
+            column.set_sort_indicator(active)
+            if active:
+                column.set_sort_order(
+                    Gtk.SortType.DESCENDING
+                    if self.model.sort_descending
+                    else Gtk.SortType.ASCENDING
+                )
 
     def _build_columns(self) -> None:
         for cid, title, kind, xalign, width, _hideable in COLUMN_DEFS:
@@ -127,7 +154,7 @@ class ExplorerTree(Gtk.ScrolledWindow):
 
         icon_renderer = Gtk.CellRendererPixbuf()
         column.pack_start(icon_renderer, False)
-        column.set_cell_data_func(icon_renderer, self.model.cell_data_func("icon"))
+        self._bind_cell(column, icon_renderer, "icon")
 
         size_renderer = Gtk.CellRendererText()
         size_renderer.set_property("xalign", 1.0)
@@ -135,12 +162,12 @@ class ExplorerTree(Gtk.ScrolledWindow):
         r, g, b, a = self.theme.rgba("fg_muted", 1.0)
         size_renderer.set_property("foreground-rgba", Gdk.RGBA(red=r, green=g, blue=b, alpha=a))
         column.pack_start(size_renderer, False)
-        column.set_cell_data_func(size_renderer, self.model.cell_data_func("name_size"))
+        self._bind_cell(column, size_renderer, "name_size")
 
         name_renderer = Gtk.CellRendererText()
         name_renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
         column.pack_start(name_renderer, True)
-        column.set_cell_data_func(name_renderer, self.model.cell_data_func("name"))
+        self._bind_cell(column, name_renderer, "name")
 
         return column
 
@@ -148,7 +175,7 @@ class ExplorerTree(Gtk.ScrolledWindow):
         column = Gtk.TreeViewColumn(title=title)
         renderer = PercentBarRenderer(self.theme)
         column.pack_start(renderer, True)
-        column.set_cell_data_func(renderer, self.model.cell_data_func("percent"))
+        self._bind_cell(column, renderer, "percent")
         return column
 
     def _build_text_column(self, title: str, kind: str, xalign: float) -> Gtk.TreeViewColumn:
@@ -156,7 +183,7 @@ class ExplorerTree(Gtk.ScrolledWindow):
         renderer = Gtk.CellRendererText()
         renderer.set_property("xalign", xalign)
         column.pack_start(renderer, True)
-        column.set_cell_data_func(renderer, self.model.cell_data_func(kind))
+        self._bind_cell(column, renderer, kind)
         return column
 
     def get_column(self, col_id: str) -> Gtk.TreeViewColumn | None:

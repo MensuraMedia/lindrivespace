@@ -27,6 +27,7 @@ Ubuntu's typeface and colour language.
 ## Features
 
 ### Overview — mounts and partitions
+- **Scans start by themselves.** A couple of seconds after launch every physical mount is queued (primary, secondary, `/`, then the rest); cards show a spinner and live entry counts, then the scanned size. Turn this off under Settings › Scanning.
 - Every mounted filesystem as a card, grouped by physical disk (NVMe, SATA, USB, loop), with label,
   device, filesystem type, used / free / total and a usage bar that turns amber at 85 % and red at 95 %.
 - Mark a **primary** and a **secondary** mountpoint in Settings › Mounts: those cards are badged and listed first.

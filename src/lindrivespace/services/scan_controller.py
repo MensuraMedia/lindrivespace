@@ -36,7 +36,12 @@ class ScanController(GObject.GObject):
     __gtype_name__ = "LdsScanController"
     __gsignals__ = {
         "scan-started": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
-        "progress": (GObject.SignalFlags.RUN_FIRST, None, (int, int, str)),
+        # int64: entry counts fit in gint, byte totals (6.2 GB) do not.
+        "progress": (
+            GObject.SignalFlags.RUN_FIRST,
+            None,
+            (GObject.TYPE_INT64, GObject.TYPE_INT64, str),
+        ),
         "batch-applied": (GObject.SignalFlags.RUN_FIRST, None, ()),
         "scan-finished": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
         "scan-error": (GObject.SignalFlags.RUN_FIRST, None, (str, str)),

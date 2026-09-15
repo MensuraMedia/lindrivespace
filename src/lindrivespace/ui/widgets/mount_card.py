@@ -40,6 +40,8 @@ class MountCardData:
     total: int
     scanned_at: str | None
     kind: str
+    scan_state: str = "idle"  # idle | queued | scanning | done | cancelled
+    scan_detail: str = ""  # "23,001 entries" while scanning, "6.2 GB" when done
 
 
 def _icon_name(kind: str) -> str:
@@ -64,7 +66,16 @@ def _usage_text(data: MountCardData) -> str:
 
 
 def _scanned_text(data: MountCardData) -> str:
-    return f"scanned {data.scanned_at}" if data.scanned_at else "not scanned"
+    if data.scan_state == "scanning":
+        return f"Scanning… {data.scan_detail}".rstrip()
+    if data.scan_state == "queued":
+        return "queued for scan"
+    if data.scan_state == "cancelled":
+        return "scan cancelled"
+    if data.scanned_at:
+        detail = f" · {data.scan_detail}" if data.scan_detail else ""
+        return f"scanned {data.scanned_at}{detail}"
+    return "not scanned"
 
 
 class MountCard(Gtk.Frame):
@@ -130,6 +141,10 @@ class MountCard(Gtk.Frame):
         self.ring = self.gauge  # backwards-compatible name
 
         bottom_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.spinner = Gtk.Spinner()
+        self.spinner.set_size_request(14, 14)
+        self.spinner.set_no_show_all(True)
+        bottom_row.pack_start(self.spinner, False, False, 0)
         self.scanned_label = Gtk.Label()
         self.scanned_label.set_xalign(0.0)
         self.scanned_label.get_style_context().add_class("dim")
@@ -150,7 +165,15 @@ class MountCard(Gtk.Frame):
         self.device_label.set_text(f"{data.device} · {data.fstype}")
         self.usage_label.set_text(_usage_text(data))
         self.scanned_label.set_text(_scanned_text(data))
+        scanning = data.scan_state == "scanning"
+        if scanning:
+            self.spinner.show()
+            self.spinner.start()
+        else:
+            self.spinner.stop()
+            self.spinner.hide()
         self.scan_button.set_label("Rescan" if data.scanned_at else "Scan")
+        self.scan_button.set_sensitive(not scanning and data.scan_state != "queued")
         self.icon.set_from_icon_name(_icon_name(data.kind), Gtk.IconSize.MENU)
         self.gauge.set_percent(_percent(data))
         self._update_button_style()

@@ -41,6 +41,13 @@ class ScanToolbar(Gtk.Box):
         self._updating_panel = False
         self._paused = False
 
+        self.get_style_context().add_class("scan-toolbar")
+        self.set_spacing(6)
+        self.set_margin_start(8)
+        self.set_margin_end(8)
+        self.set_margin_top(8)
+        self.set_margin_bottom(4)
+
         self.path_entry = Gtk.Entry()
         self.path_entry.set_placeholder_text("Path to scan…")
         self.path_entry.set_hexpand(True)
@@ -71,7 +78,10 @@ class ScanToolbar(Gtk.Box):
         self.pause_button.set_visible(False)
         self.pack_start(self.pause_button, False, False, 0)
 
-        self.pack_start(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL), False, False, 4)
+        sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
+        sep.set_margin_start(4)
+        sep.set_margin_end(4)
+        self.pack_start(sep, False, False, 0)
 
         primary_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         primary_box.get_style_context().add_class("linked")
@@ -108,10 +118,7 @@ class ScanToolbar(Gtk.Box):
         self.panel_button.connect("toggled", self._on_panel_toggled)
         self.pack_end(self.panel_button, False, False, 0)
 
-        self.columns_button = Gtk.Button()
-        self.columns_button.set_image(
-            Gtk.Image.new_from_icon_name("view-column-symbolic", Gtk.IconSize.BUTTON)
-        )
+        self.columns_button = Gtk.Button(label="Columns")
         self.columns_button.set_tooltip_text("Choose which columns to show")
         self.columns_button.get_accessible().set_name("Columns")
         self.columns_button.connect("clicked", lambda _b: self.emit("columns-requested"))

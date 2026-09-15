@@ -374,3 +374,28 @@ infobar.error-bar > revealer > box {
 infobar.error-bar label {
   color: @fg;
 }
+
+/* ---- Explorer toolbar spacing ------------------------------------------ */
+.scan-toolbar button {
+  min-height: 28px;
+  padding: 3px 12px;
+}
+.scan-toolbar button.image-button {
+  padding: 3px 9px;
+}
+.scan-toolbar .linked > button:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.scan-toolbar .linked > button:last-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left-width: 0;
+}
+.scan-toolbar entry {
+  min-height: 28px;
+}
+spinner {
+  color: @accent;
+  -gtk-icon-source: -gtk-icontheme("process-working-symbolic");
+}

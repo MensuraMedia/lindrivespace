@@ -151,11 +151,19 @@ def _all_cards(page) -> dict:  # type: ignore[no-untyped-def]
 
 
 class _FakeApp:
-    """Just the two attributes BasePage reads off ``window.app``."""
+    """Just what BasePage/OverviewPage read off ``window.app``."""
 
     def __init__(self, settings: Settings) -> None:
+        from lindrivespace.core import units
+        from lindrivespace.core.options import ScanOptions
+        from lindrivespace.models.tree_model import ScanTreeModel
+        from lindrivespace.services.scan_registry import ScanRegistry
+
         self.settings = settings
         self.theme = get_theme(settings.get("theme"))
+        self.format_bytes = lambda n: units.format_bytes(n)
+        self.make_model = lambda: ScanTreeModel(show_files=False)
+        self.scan_registry = ScanRegistry(self.make_model, lambda: ScanOptions())
 
 
 class _FakeWindow:

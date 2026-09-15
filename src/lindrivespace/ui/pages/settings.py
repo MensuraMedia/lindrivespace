@@ -176,6 +176,13 @@ class SettingsPage(BasePage):
             "Show hidden files",
             "Include dotfiles and dot-directories in the scan.",
         )
+        self.auto_scan_switch = self._add_scan_switch(
+            group,
+            "auto_on_start",
+            "Scan all mounts on startup",
+            "A few seconds after launch, scan the primary and secondary mountpoints, then the rest",
+            default=True,
+        )
 
         self.top_files_spin = Gtk.SpinButton.new_with_range(0, 500, 1)
         self.top_files_spin.set_value(int(self.settings.get("scan.top_files", 50)))
@@ -192,10 +199,10 @@ class SettingsPage(BasePage):
         self.scanning_group = group
 
     def _add_scan_switch(
-        self, group: PrefGroup, key: str, label: str, description: str
+        self, group: PrefGroup, key: str, label: str, description: str, default: bool = False
     ) -> Gtk.Switch:
         switch = Gtk.Switch()
-        switch.set_active(bool(self.settings.get(f"scan.{key}", False)))
+        switch.set_active(bool(self.settings.get(f"scan.{key}", default)))
         switch.connect(
             "notify::active",
             lambda sw, _pspec, k=key: self._persist(f"scan.{k}", sw.get_active()),

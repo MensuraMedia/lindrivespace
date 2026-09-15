@@ -20,12 +20,11 @@ gi.require_version("Pango", "1.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk, Pango  # noqa: E402
 
 from lindrivespace.config.layout import Layout  # noqa: E402
-from lindrivespace.core import units  # noqa: E402
 from lindrivespace.core.fsnode import FsNode  # noqa: E402
-from lindrivespace.core.options import DEFAULT_EXCLUDES, ScanOptions  # noqa: E402
 from lindrivespace.models.tree_model import ScanTreeModel  # noqa: E402
 from lindrivespace.services.favorites import get_store  # noqa: E402
 from lindrivespace.services.scan_controller import ScanController  # noqa: E402
+from lindrivespace.services.scan_registry import STATE_DONE, ScanEntry, ScanRegistry  # noqa: E402
 from lindrivespace.ui.pages.base import BasePage  # noqa: E402
 from lindrivespace.ui.widgets.breadcrumb import Breadcrumb  # noqa: E402
 from lindrivespace.ui.widgets.explorer_tree import ExplorerTree  # noqa: E402
@@ -57,24 +56,25 @@ class ExplorerPage(BasePage):
         self._pill: Gtk.Box | None = None
         self._pill_label: Gtk.Label | None = None
         self._pill_progress: Gtk.ProgressBar | None = None
+        self._pill_spinner: Gtk.Spinner | None = None
         self._error_count = 0
         self._has_side_panel = False
         self._selected_file: object | None = None
 
-        self.model = ScanTreeModel(
-            fmt_bytes=self._format_bytes,
-            allocated_primary=self.settings.get("primary_size", "allocated") == "allocated",
-            top_n_bold=self.settings.get("explorer.top_n_bold", 3),
-        )
-        self.controller = ScanController(self.model)
+        # One model + controller per root path live in the registry; the page
+        # binds to one entry at a time (the active scan by default).
+        self.registry: ScanRegistry = self.app.scan_registry
+        self.entry: ScanEntry | None = None
+        self.model: ScanTreeModel = self.app.make_model()  # placeholder until bound
+        self.controller: ScanController = ScanController(self.model)
+        self._controller_handlers: list[int] = []
+        self._user_bound = False
         self._root_expanded = False
-        self.controller.connect("batch-applied", self._on_batch_applied)
-        self.controller.connect("progress", self._on_progress)
-        self.controller.connect("scan-finished", self._on_scan_finished)
-        self.controller.connect("scan-error", self._on_scan_error)
+        self._connect_controller(self.controller)
+        self.registry.connect("active-changed", self._on_registry_active_changed)
 
         self.toolbar = ScanToolbar(self.theme, self.settings)
-        self.toolbar.connect("scan-requested", lambda _t, path: self.start_scan(path))
+        self.toolbar.connect("scan-requested", lambda _t, path: self.start_scan(path, force=True))
         self.toolbar.connect("cancel-requested", lambda _t: self.controller.cancel())
         self.toolbar.connect("pause-toggled", self._on_pause_toggled)
         self.toolbar.connect("primary-changed", self._on_primary_changed)
@@ -139,41 +139,96 @@ class ExplorerPage(BasePage):
         self.status_bar.pack_end(self.status_right, False, False, 0)
         self.pack_start(self.status_bar, False, False, 0)
 
-    # ---- formatting ---------------------------------------------------------
-
-    def _format_bytes(self, n: int) -> int | str:
-        binary = self.settings.get("units", "decimal") == "binary"
-        return units.format_bytes(n, binary=binary)
-
     # ---- scan lifecycle -------------------------------------------------
 
-    def start_scan(self, path: str) -> None:
-        """Start scanning ``path``. Called by the window (request_scan) and the toolbar."""
-        self._root_expanded = False
+    def start_scan(self, path: str, force: bool = False) -> None:
+        """Show ``path`` in the tree; scan it now unless a finished scan exists (or ``force``)."""
         path = os.path.abspath(path)
         if not os.path.isdir(path):
             self.status_left.set_text(f"Not a folder: {path}")
             return
-
-        scan_settings = self.settings.get("scan", {}) or {}
-        options = ScanOptions(
-            follow_symlinks=bool(scan_settings.get("follow_symlinks", False)),
-            cross_mounts=bool(scan_settings.get("cross_mounts", False)),
-            count_hardlinks_once=bool(scan_settings.get("count_hardlinks_once", True)),
-            show_hidden=bool(scan_settings.get("show_hidden", True)),
-            excludes=tuple(scan_settings.get("excludes", DEFAULT_EXCLUDES)),
-            top_files=int(scan_settings.get("top_files", 50)),
-        )
-
+        entry = self.registry.get_or_create(path)
+        self._bind_entry(entry, user=True)
+        if entry.state == STATE_DONE and not force:
+            self._show_finished(entry)
+            return
         self._error_count = 0
-        self.toolbar.set_path(path)
-        self.toolbar.set_running(True)
-        self._ensure_pill()
-        if self._pill_label is not None:
-            self._pill_label.set_text(f"Scanning {path} · 0 entries · 0 s")
-        self.window.set_header_widget(self._pill)
-        self.controller.start(path, options)
+        self.registry.request(path, force=force)
         self._update_status()
+
+    # ---- registry binding ---------------------------------------------------
+
+    def _connect_controller(self, controller: ScanController) -> None:
+        self._controller_handlers = [
+            controller.connect("batch-applied", self._on_batch_applied),
+            controller.connect("progress", self._on_progress),
+            controller.connect("scan-started", self._on_scan_started),
+            controller.connect("scan-finished", self._on_scan_finished),
+            controller.connect("scan-error", self._on_scan_error),
+        ]
+
+    def _bind_entry(self, entry: ScanEntry, *, user: bool) -> None:
+        """Point the tree, breadcrumb, panel and status at ``entry``."""
+        if user:
+            self._user_bound = True
+        if entry is self.entry:
+            return
+        for handler in self._controller_handlers:
+            self.controller.disconnect(handler)
+        self.entry = entry
+        self.model = entry.model
+        self.controller = entry.controller
+        self._connect_controller(self.controller)
+        self._root_expanded = False
+        self.tree.set_model(self.model)
+        self.toolbar.set_path(entry.path)
+        self.toolbar.set_running(entry.running)
+        if entry.running:
+            self._ensure_pill()
+            self.window.set_header_widget(self._pill)
+            self._update_pill()
+        elif self.window.current_page_id == self.page_id:
+            self.window.set_header_widget(None)
+        self._error_count = entry.errors
+        if self.model.root is not None:
+            self._expand_root_once()
+            self.tree.select_node(self.model.root)
+        else:
+            self.breadcrumb.set_node(None, self.model)
+            self.panel.set_node(None, self.model)
+        self._update_status()
+
+    def _on_registry_active_changed(self, _registry: ScanRegistry, path: str) -> None:
+        """Follow the startup queue until the user picks a scan themselves."""
+        if self._user_bound or not path:
+            return
+        entry = self.registry.get(path)
+        if entry is not None:
+            self._bind_entry(entry, user=False)
+
+    def _show_finished(self, entry: ScanEntry) -> None:
+        self.toolbar.set_running(False)
+        self.window.set_header_widget(None)
+        self.tree.refresh()
+        if self.model.root is not None:
+            self._expand_root_once()
+            self.tree.select_node(self.model.root)
+        self._honour_pending_reveal()
+        self._update_status(extra=f"scanned {entry.finished_text}")
+
+    def _honour_pending_reveal(self) -> None:
+        pending = getattr(self.window, "pending_reveal", None)
+        if pending:
+            self.window.pending_reveal = None
+            self.reveal_path(str(pending))
+
+    def _expand_root_once(self) -> None:
+        if self._root_expanded or self.model.root is None:
+            return
+        root_it = self.model.iter_for_node(self.model.root)
+        if root_it is not None and self.model.store.iter_has_child(root_it):
+            self.tree.treeview.expand_row(self.model.store.get_path(root_it), False)
+            self._root_expanded = True
 
     def _on_pause_toggled(self, _toolbar: ScanToolbar, paused: bool) -> None:
         if paused:
@@ -216,6 +271,11 @@ class ExplorerPage(BasePage):
         stop_button.connect("clicked", lambda _b: self.controller.cancel())
         box.pack_start(stop_button, False, False, 0)
 
+        spinner = Gtk.Spinner()
+        spinner.set_size_request(16, 16)
+        box.pack_start(spinner, False, False, 0)
+        self._pill_spinner = spinner
+
         label = Gtk.Label(label="")
         label.get_style_context().add_class("mono")
         box.pack_start(label, False, False, 0)
@@ -237,18 +297,14 @@ class ExplorerPage(BasePage):
         elapsed = int(self.controller.elapsed)
         self._pill_label.set_text(f"Scanning {path} · {entries:,} entries · {elapsed} s")
         self._pill_progress.pulse()
+        if self._pill_spinner is not None and not self._pill_spinner.get_property("active"):
+            self._pill_spinner.start()
 
     # ---- controller signals -----------------------------------------------
 
     def _on_batch_applied(self, _controller: ScanController) -> None:
         self.tree.refresh()
-        # Show the first level as soon as it exists: the root row is populated by
-        # the model, but GTK keeps it collapsed until we expand it once per scan.
-        if not self._root_expanded and self.model.root is not None:
-            root_it = self.model.iter_for_node(self.model.root)
-            if root_it is not None and self.model.store.iter_has_child(root_it):
-                self.tree.treeview.expand_row(self.model.store.get_path(root_it), False)
-                self._root_expanded = True
+        self._expand_root_once()
         node = self.tree.get_selected_node()
         if node is not None:
             self.breadcrumb.set_node(node, self.model)
@@ -263,21 +319,34 @@ class ExplorerPage(BasePage):
         self._update_pill()
         self._update_status()
 
+    def _on_scan_started(self, _controller: ScanController, path: str) -> None:
+        self._root_expanded = False
+        self._error_count = 0
+        self.toolbar.set_path(path)
+        self.toolbar.set_running(True)
+        self._ensure_pill()
+        if self._pill_label is not None:
+            self._pill_label.set_text(f"Scanning {path} · 0 entries · 0 s")
+        if self._pill_spinner is not None:
+            self._pill_spinner.start()
+        self.window.set_header_widget(self._pill)
+        self._update_status()
+
     def _on_scan_finished(self, _controller: ScanController, cancelled: bool) -> None:
         path = self.controller.path or ""
         elapsed = self.controller.elapsed
         self.toolbar.set_running(False)
+        if self._pill_spinner is not None:
+            self._pill_spinner.stop()
         self.window.set_header_widget(None)
         if not cancelled:
             self.window.record_scan(path)
         state = "cancelled" if cancelled else "finished"
         self.tree.refresh()
         if self.model.root is not None:
+            self._expand_root_once()
             self.tree.select_node(self.model.root)
-        pending = getattr(self.window, "pending_reveal", None)
-        if pending:
-            self.window.pending_reveal = None
-            self.reveal_path(str(pending))
+        self._honour_pending_reveal()
         self._update_status(extra=f"{state} in {elapsed:.1f} s")
 
     def _on_scan_error(self, _controller: ScanController, _path: str, _message: str) -> None:
@@ -422,7 +491,7 @@ class ExplorerPage(BasePage):
         elif name == "open-terminal" and path:
             self._open_terminal(path)
         elif name == "rescan" and path:
-            self.start_scan(path)
+            self.start_scan(path, force=True)
         elif name == "exclude" and path:
             excludes = list(self.settings.get("scan.excludes", []) or [])
             if path not in excludes:
@@ -541,5 +610,14 @@ class ExplorerPage(BasePage):
         self.tree.save_state()
 
     def on_shown(self) -> None:
+        if self.entry is None:
+            entry = self.registry.active_entry
+            if entry is None:
+                done = self.registry.done_paths()
+                entry = self.registry.get(done[0]) if done else None
+            if entry is not None:
+                self._bind_entry(entry, user=False)
+                if entry.state == STATE_DONE:
+                    self._show_finished(entry)
         if self.controller.running and self._pill is not None:
             self.window.set_header_widget(self._pill)

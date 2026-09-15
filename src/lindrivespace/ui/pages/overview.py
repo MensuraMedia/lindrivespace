@@ -9,6 +9,7 @@ wires together (``KpiTile``, ``MountCard``/``MountCardData``).
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 
 import gi
 
@@ -20,7 +21,7 @@ from lindrivespace.core.units import format_bytes  # noqa: E402
 from lindrivespace.models.mounts_model import MountsModel  # noqa: E402
 from lindrivespace.services.mounts_service import MountsService  # noqa: E402
 from lindrivespace.ui.pages.base import BasePage  # noqa: E402
-from lindrivespace.ui.widgets import KpiTile, MountCard  # noqa: E402
+from lindrivespace.ui.widgets import KpiTile, MountCard, MountCardData  # noqa: E402
 
 _STALE_SECONDS = 30.0
 
@@ -52,6 +53,9 @@ class OverviewPage(BasePage):
 
         self.service.connect("mounts-changed", self._on_mounts_changed)
         self.service.start()
+        self.registry = self.app.scan_registry
+        self.registry.connect("entry-changed", self._on_scan_entry_changed)
+        self.registry.connect("active-changed", lambda _r, _p: self._update_subtitle())
 
     # ---- construction -------------------------------------------------------
 
@@ -62,10 +66,16 @@ class OverviewPage(BasePage):
         title.set_xalign(0.0)
         box.pack_start(title, False, False, 0)
 
+        subtitle_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.header_spinner = Gtk.Spinner()
+        self.header_spinner.set_size_request(14, 14)
+        self.header_spinner.set_no_show_all(True)
+        subtitle_row.pack_start(self.header_spinner, False, False, 0)
         self.subtitle_label = Gtk.Label(label="Reading mounts…")
         self.subtitle_label.get_style_context().add_class("page-subtitle")
         self.subtitle_label.set_xalign(0.0)
-        box.pack_start(self.subtitle_label, False, False, 0)
+        subtitle_row.pack_start(self.subtitle_label, False, False, 0)
+        box.pack_start(subtitle_row, False, False, 0)
 
         self.pack_start(box, False, False, 0)
 
@@ -192,8 +202,35 @@ class OverviewPage(BasePage):
         box.pack_start(flow, False, False, 0)
         return box
 
-    def _build_card(self, mount: MountInfo) -> MountCard:
+    def _card_data(self, mount: MountInfo) -> MountCardData:
+        """Card data plus the registry's live scan state for that mountpoint."""
         data = self.model.card_data(mount, self.window.scan_history)
+        entry = self.registry.get(mount.mountpoint)
+        if entry is None:
+            return data
+        if entry.state == "scanning":
+            detail = f"{entry.entries:,} entries" if entry.entries else ""
+        elif entry.state == "done":
+            detail = self.app.format_bytes(entry.alloc) if entry.alloc else ""
+        else:
+            detail = ""
+        return replace(
+            data,
+            scanned_at=entry.finished_text or data.scanned_at,
+            scan_state=entry.state,
+            scan_detail=detail,
+        )
+
+    def _on_scan_entry_changed(self, _registry: object, path: str) -> None:
+        card = self._cards.get(path)
+        mount = self._mounts_by_mountpoint.get(path)
+        if card is not None and mount is not None:
+            card.update(self._card_data(mount))
+        self._update_subtitle()
+        self._update_kpis()
+
+    def _build_card(self, mount: MountInfo) -> MountCard:
+        data = self._card_data(mount)
         card = MountCard(self.theme, data)
         # MountCard's usage line wraps (Gtk.Label.set_line_wrap) but a
         # wrapping label's *natural* width request is still its full
@@ -224,10 +261,19 @@ class OverviewPage(BasePage):
         return roles
 
     def known_mountpoints(self) -> list[str]:
-        """Visible mountpoints for the Settings selectors (sorted)."""
-        return sorted(
-            m.mountpoint for m in self.model.mounts if self.model.is_visible(m, show_hidden=False)
-        )
+        """Mountpoints on physical disks (no loops, pseudo-fs or bind mounts), sorted.
+
+        Used by the Settings selectors and by the startup auto-scan queue.
+        """
+        out: list[str] = []
+        for disk in self.model.disks:
+            if not self.model.is_visible_disk(disk, show_hidden=False):
+                continue
+            for m in disk.mounts:
+                if not self.model.is_visible(m, show_hidden=False) or m.is_bind:
+                    continue
+                out.append(m.mountpoint)
+        return sorted(set(out))
 
     def refresh_roles(self) -> None:
         """Re-badge and re-order cards after the Settings page changed the roles."""
@@ -300,17 +346,26 @@ class OverviewPage(BasePage):
         monitor_text = (
             "udev monitor live" if self.service.monitor_available else "udev monitor unavailable"
         )
-        self.subtitle_label.set_text(
-            f"{mount_count} mounts on {disk_count} disks · {hidden_text} · {monitor_text}"
-        )
+        base = f"{mount_count} mounts on {disk_count} disks · {hidden_text} · {monitor_text}"
+        active = self.registry.active_entry
+        if active is not None:
+            entries = f" · {active.entries:,} entries" if active.entries else ""
+            queued = len(self.registry.queue)
+            queued_text = f" · {queued} more queued" if queued else ""
+            self.subtitle_label.set_text(f"Scanning {active.path}{entries}{queued_text}")
+            self.header_spinner.show()
+            self.header_spinner.start()
+        else:
+            self.subtitle_label.set_text(base)
+            self.header_spinner.stop()
+            self.header_spinner.hide()
 
     # ---- public API (called by MainWindow.record_scan) ----------------------
 
     def refresh_scan_history(self) -> None:
         """Refresh every card's scanned-at label and the Scanned KPI."""
-        scan_history = self.window.scan_history
         for mountpoint, mount in self._mounts_by_mountpoint.items():
             card = self._cards.get(mountpoint)
             if card is not None:
-                card.update(self.model.card_data(mount, scan_history))
+                card.update(self._card_data(mount))
         self._update_kpis()

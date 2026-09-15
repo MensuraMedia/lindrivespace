@@ -22,6 +22,10 @@ from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 from lindrivespace import APP_ID, APP_NAME, __version__, logsetup  # noqa: E402
 from lindrivespace.config.settings import Settings  # noqa: E402
 from lindrivespace.config.theme import get_theme  # noqa: E402
+from lindrivespace.core import units  # noqa: E402
+from lindrivespace.core.options import DEFAULT_EXCLUDES, ScanOptions  # noqa: E402
+from lindrivespace.models.tree_model import ScanTreeModel  # noqa: E402
+from lindrivespace.services.scan_registry import ScanRegistry  # noqa: E402
 from lindrivespace.ui.theme_loader import ThemeLoader  # noqa: E402
 from lindrivespace.ui.window import MainWindow  # noqa: E402
 
@@ -69,6 +73,63 @@ class LinDriveSpaceApp(Gtk.Application):
         self.theme = get_theme(theme_id or self.settings.get("theme"))
         self.theme_loader = ThemeLoader(css_path=data_path("css", "app.css"))
         self.window: MainWindow | None = None
+        self.scan_registry = ScanRegistry(self.make_model, self.make_scan_options)
+        self._auto_scan_attempts = 0
+
+    # ---- scan factories (shared by the Explorer and the startup queue) -------
+
+    def format_bytes(self, n: int) -> str:
+        return units.format_bytes(n, binary=self.settings.get("units", "decimal") == "binary")
+
+    def make_model(self) -> ScanTreeModel:
+        return ScanTreeModel(
+            fmt_bytes=self.format_bytes,
+            allocated_primary=self.settings.get("primary_size", "allocated") == "allocated",
+            top_n_bold=int(self.settings.get("explorer.top_n_bold", 3)),
+            show_hidden=bool(self.settings.get("scan.show_hidden", True)),
+        )
+
+    def make_scan_options(self) -> ScanOptions:
+        scan = self.settings.get("scan", {}) or {}
+        return ScanOptions(
+            follow_symlinks=bool(scan.get("follow_symlinks", False)),
+            cross_mounts=bool(scan.get("cross_mounts", False)),
+            count_hardlinks_once=bool(scan.get("count_hardlinks_once", True)),
+            show_hidden=bool(scan.get("show_hidden", True)),
+            excludes=tuple(scan.get("excludes", DEFAULT_EXCLUDES)),
+            top_files=int(scan.get("top_files", 50)),
+        )
+
+    # ---- startup auto-scan -----------------------------------------------------
+
+    def auto_scan_order(self) -> list[str]:
+        """Mountpoints to scan at startup: primary, secondary, /, then the rest."""
+        window = self.window
+        overview = window.pages.get("overview") if window is not None else None
+        known = list(getattr(overview, "known_mountpoints", list)())
+        if not known:
+            return []
+        roles = getattr(overview, "mount_roles", dict)()
+        first = [mp for mp, role in roles.items() if role == "primary" and mp in known]
+        second = [mp for mp, role in roles.items() if role == "secondary" and mp in known]
+        ordered = first + second + (["/"] if "/" in known else [])
+        return ordered + [mp for mp in known if mp not in ordered]
+
+    def _on_scan_entry_changed(self, registry: ScanRegistry, path: str) -> None:
+        entry = registry.get(path)
+        if entry is not None and entry.state == "done" and self.window is not None:
+            if self.window.scan_history.get(path) != entry.finished_text:
+                self.window.record_scan(path, entry.finished_text)
+
+    def _auto_scan_tick(self) -> bool:
+        """Wait (up to ~20 s) for the mount list, then queue every mount."""
+        self._auto_scan_attempts += 1
+        order = self.auto_scan_order()
+        if not order:
+            return self._auto_scan_attempts < 40  # retry every 500 ms
+        self.log.info("auto-scan queue: %s", ", ".join(order))
+        self.scan_registry.enqueue(order)
+        return False
 
     # ---- lifecycle --------------------------------------------------------
 
@@ -86,10 +147,16 @@ class LinDriveSpaceApp(Gtk.Application):
         window.present()
         # Uncaught errors anywhere (main loop callbacks, threads) surface in the window.
         logsetup.register_error_reporter(window.report_error_threadsafe)
+        self.scan_registry.connect("entry-changed", self._on_scan_entry_changed)
         if self.open_paths:
-            window.request_scan(self.open_paths[0])
+            window.request_scan(self.open_paths[0], force=True)
+        elif not self.smoke and bool(self.settings.get("scan.auto_on_start", True)):
+            # Screenshot runs stay deterministic unless asked to include the auto-scan.
+            if not self.screenshot or os.environ.get("LINDRIVESPACE_SCREENSHOT_AUTOSCAN") == "1":
+                GLib.timeout_add(1500, self._auto_scan_tick)
         if self.screenshot:
-            GLib.timeout_add(1200, self._take_screenshot, self.screenshot)
+            delay = int(os.environ.get("LINDRIVESPACE_SCREENSHOT_DELAY_MS", "1200"))
+            GLib.timeout_add(delay, self._take_screenshot, self.screenshot)
         elif self.smoke:
             GLib.timeout_add(400, self._quit_after_smoke)
 
