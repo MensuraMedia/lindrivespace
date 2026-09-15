@@ -41,6 +41,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self.pages: dict[str, BasePage] = {}
         self.specs: dict[str, PageSpec] = {s.id: s for s in PAGES}
         self.current_page_id: str | None = None
+        # mountpoint/path -> ISO "YYYY-MM-DD HH:MM" of the last completed scan (session only)
+        self.scan_history: dict[str, str] = {}
 
         self._build_headerbar()
         self._build_body()
@@ -126,7 +128,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.pages[page_id].on_shown()
 
     def request_scan(self, path: str) -> None:
-        """Open the Explorer on ``path``. Wired to the scan controller in WP8."""
+        """Open the Explorer on ``path`` and start scanning (ExplorerPage.start_scan)."""
         self.show_page("explorer")
         explorer = self.pages.get("explorer")
         start = getattr(explorer, "start_scan", None)
@@ -134,6 +136,16 @@ class MainWindow(Gtk.ApplicationWindow):
             start(path)
         else:
             print(f"scan requested for {path} (explorer not yet implemented)")
+
+    def record_scan(self, path: str, when: str | None = None) -> None:
+        """Called by the Explorer when a scan finishes; the Overview shows it on the card."""
+        import time
+
+        self.scan_history[path] = when or time.strftime("%Y-%m-%d %H:%M")
+        overview = self.pages.get("overview")
+        refresh = getattr(overview, "refresh_scan_history", None)
+        if callable(refresh):
+            refresh()
 
     # ---- persistence ------------------------------------------------------
 
