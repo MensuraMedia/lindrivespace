@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from lindrivespace.config.theme import DEFAULT_THEME_ID
 from lindrivespace.core.options import DEFAULT_EXCLUDES
@@ -115,7 +115,7 @@ class Settings:
 
 
 def _deep_copy(d: dict[str, Any]) -> dict[str, Any]:
-    return json.loads(json.dumps(d))
+    return cast(dict[str, Any], json.loads(json.dumps(d)))
 
 
 def _deep_update(base: dict[str, Any], incoming: dict[str, Any]) -> None:

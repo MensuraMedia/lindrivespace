@@ -7,6 +7,7 @@
 ## Changes
 <!-- Add newest first -->
 - [WP6 tree model + controller](changes/2026-09-14-wp6-tree-model-controller.md) — lazy TreeStore, draw-time formatting, drain
+- [WP4 geometry/data](changes/2026-09-14-wp4-geometry-data.md) — treemap, classify, snapshot
 - [WP5 widgets](changes/2026-09-14-wp5-widgets.md) — bar renderer, ring, mount card, KPI tile
 - [WP3 mounts](changes/2026-09-14-wp3-mounts.md) — mount/disk topology, udev fd
 - [WP2 scanner](changes/2026-09-14-wp2-scanner.md) — scanner, units, CLI helper
