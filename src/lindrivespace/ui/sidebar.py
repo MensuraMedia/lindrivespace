@@ -41,7 +41,8 @@ class Sidebar(Gtk.Box):
         box.set_valign(Gtk.Align.FILL)
         box.get_style_context().add_class("logo-area")
 
-        image = Gtk.Image.new_from_icon_name(APP_ID, Gtk.IconSize.DIALOG)
+        # The in-app mark (plain ring) — the desktop/menu icon is the tiled APP_ID icon.
+        image = Gtk.Image.new_from_icon_name(f"{APP_ID}-mark", Gtk.IconSize.DIALOG)
         image.set_pixel_size(dims.LOGO_IMAGE_SIZE)
         image.set_valign(Gtk.Align.END)
         box.pack_start(image, True, True, 0)

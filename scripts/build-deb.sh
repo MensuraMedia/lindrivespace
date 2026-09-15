@@ -18,7 +18,7 @@ cp -r "$SRC/data/." "$SHARE/"
 rm -rf "$SHARE/icons" "$SHARE/bin" "$SHARE/polkit" "$SHARE/$APP_ID.desktop" "$SHARE/$APP_ID.metainfo.xml"
 for dir in "$SRC"/data/icons/hicolor/*/apps; do
     size="$(basename "$(dirname "$dir")")"; mkdir -p "$BUILD/usr/share/icons/hicolor/$size/apps"
-    cp "$dir"/$APP_ID.* "$BUILD/usr/share/icons/hicolor/$size/apps/"
+    cp "$dir"/$APP_ID*.* "$BUILD/usr/share/icons/hicolor/$size/apps/"
 done
 install -m 644 "$SRC/data/$APP_ID.desktop" "$BUILD/usr/share/applications/"
 install -m 644 "$SRC/data/$APP_ID.metainfo.xml" "$BUILD/usr/share/metainfo/"

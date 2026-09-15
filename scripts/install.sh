@@ -50,7 +50,7 @@ run install -m 644 "$SRC/data/$APP_ID.metainfo.xml" "$META/$APP_ID.metainfo.xml"
 for dir in "$SRC"/data/icons/hicolor/*/apps; do
     size="$(basename "$(dirname "$dir")")"
     run mkdir -p "$ICONS/$size/apps"
-    run cp "$dir"/$APP_ID.* "$ICONS/$size/apps/"
+    run cp "$dir"/$APP_ID*.* "$ICONS/$size/apps/"
 done
 if [ "$MODE" = "system" ]; then
     run mkdir -p /usr/libexec/lindrivespace /usr/share/polkit-1/actions

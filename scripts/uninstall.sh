@@ -12,7 +12,7 @@ done
 run() { if [ -n "$SUDO" ]; then sudo "$@"; else "$@"; fi; }
 run rm -rf "$PREFIX/share/lindrivespace"
 run rm -f "$PREFIX/bin/lindrivespace" "$PREFIX/share/applications/$APP_ID.desktop" "$PREFIX/share/metainfo/$APP_ID.metainfo.xml"
-run find "$PREFIX/share/icons/hicolor" -name "$APP_ID.*" -delete 2>/dev/null || true
+run find "$PREFIX/share/icons/hicolor" -name "$APP_ID*" -delete 2>/dev/null || true
 if [ "$MODE" = "system" ]; then
     run rm -rf /usr/libexec/lindrivespace
     run rm -f "/usr/share/polkit-1/actions/$APP_ID.policy"
