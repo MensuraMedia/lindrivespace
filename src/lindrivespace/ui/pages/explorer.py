@@ -53,10 +53,6 @@ class ExplorerPage(BasePage):
         self.set_margin_bottom(0)
         self.set_spacing(0)
 
-        self._pill: Gtk.Box | None = None
-        self._pill_label: Gtk.Label | None = None
-        self._pill_progress: Gtk.ProgressBar | None = None
-        self._pill_spinner: Gtk.Spinner | None = None
         self._error_count = 0
         self._has_side_panel = False
         self._selected_file: object | None = None
@@ -183,12 +179,6 @@ class ExplorerPage(BasePage):
         self.tree.set_model(self.model)
         self.toolbar.set_path(entry.path)
         self.toolbar.set_running(entry.running)
-        if entry.running:
-            self._ensure_pill()
-            self.window.set_header_widget(self._pill)
-            self._update_pill()
-        elif self.window.current_page_id == self.page_id:
-            self.window.set_header_widget(None)
         self._error_count = entry.errors
         if self.model.root is not None:
             self._expand_root_once()
@@ -208,7 +198,6 @@ class ExplorerPage(BasePage):
 
     def _show_finished(self, entry: ScanEntry) -> None:
         self.toolbar.set_running(False)
-        self.window.set_header_widget(None)
         self.tree.refresh()
         if self.model.root is not None:
             self._expand_root_once()
@@ -250,56 +239,6 @@ class ExplorerPage(BasePage):
     def _on_cross_mounts_changed(self, _toolbar: ScanToolbar, cross_mounts: bool) -> None:
         self.settings.set("scan.cross_mounts", cross_mounts)
 
-    # ---- header progress pill --------------------------------------------
-
-    def _ensure_pill(self) -> None:
-        if self._pill is not None:
-            return
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        box.get_style_context().add_class("pill")
-
-        stop_button = Gtk.Button()
-        stop_button.set_relief(Gtk.ReliefStyle.NONE)
-        stop_icon = Gtk.Image.new_from_icon_name("process-stop-symbolic", Gtk.IconSize.MENU)
-        provider = Gtk.CssProvider()
-        provider.load_from_data(f"image {{ color: {self.theme.danger}; }}".encode())
-        stop_icon.get_style_context().add_provider(
-            provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        )
-        stop_button.add(stop_icon)
-        stop_button.set_tooltip_text("Cancel scan")
-        stop_button.connect("clicked", lambda _b: self.controller.cancel())
-        box.pack_start(stop_button, False, False, 0)
-
-        spinner = Gtk.Spinner()
-        spinner.set_size_request(16, 16)
-        box.pack_start(spinner, False, False, 0)
-        self._pill_spinner = spinner
-
-        label = Gtk.Label(label="")
-        label.get_style_context().add_class("mono")
-        box.pack_start(label, False, False, 0)
-
-        progress = Gtk.ProgressBar()
-        progress.set_show_text(False)
-        progress.set_size_request(120, -1)
-        box.pack_start(progress, False, False, 0)
-
-        self._pill = box
-        self._pill_label = label
-        self._pill_progress = progress
-
-    def _update_pill(self) -> None:
-        if self._pill_label is None or self._pill_progress is None:
-            return
-        path = self.controller.path or ""
-        entries = self.controller.entries
-        elapsed = int(self.controller.elapsed)
-        self._pill_label.set_text(f"Scanning {path} · {entries:,} entries · {elapsed} s")
-        self._pill_progress.pulse()
-        if self._pill_spinner is not None and not self._pill_spinner.get_property("active"):
-            self._pill_spinner.start()
-
     # ---- controller signals -----------------------------------------------
 
     def _on_batch_applied(self, _controller: ScanController) -> None:
@@ -310,13 +249,11 @@ class ExplorerPage(BasePage):
             self.breadcrumb.set_node(node, self.model)
         elif self.model.root is not None:
             self.breadcrumb.set_node(self.model.root, self.model)
-        self._update_pill()
         self._update_status()
 
     def _on_progress(
         self, _controller: ScanController, _entries: int, _alloc: int, _current_path: str
     ) -> None:
-        self._update_pill()
         self._update_status()
 
     def _on_scan_started(self, _controller: ScanController, path: str) -> None:
@@ -324,21 +261,12 @@ class ExplorerPage(BasePage):
         self._error_count = 0
         self.toolbar.set_path(path)
         self.toolbar.set_running(True)
-        self._ensure_pill()
-        if self._pill_label is not None:
-            self._pill_label.set_text(f"Scanning {path} · 0 entries · 0 s")
-        if self._pill_spinner is not None:
-            self._pill_spinner.start()
-        self.window.set_header_widget(self._pill)
         self._update_status()
 
     def _on_scan_finished(self, _controller: ScanController, cancelled: bool) -> None:
         path = self.controller.path or ""
         elapsed = self.controller.elapsed
         self.toolbar.set_running(False)
-        if self._pill_spinner is not None:
-            self._pill_spinner.stop()
-        self.window.set_header_widget(None)
         if not cancelled:
             self.window.record_scan(path)
         state = "cancelled" if cancelled else "finished"
@@ -443,7 +371,7 @@ class ExplorerPage(BasePage):
         entries = self.controller.entries or self.model.entries
         elapsed = self.controller.elapsed
         state = extra or ("scanning" if self.controller.running else "idle")
-        left = f"entries {entries:,} · {elapsed:.0f} s · {state}"
+        left = f"{entries:,} items · {elapsed:.0f} s · {state}"
         if self._error_count:
             left += f" · {self._error_count} denied · re-scan as admin"
         self.status_left.set_text(left)
@@ -619,5 +547,4 @@ class ExplorerPage(BasePage):
                 self._bind_entry(entry, user=False)
                 if entry.state == STATE_DONE:
                     self._show_finished(entry)
-        if self.controller.running and self._pill is not None:
-            self.window.set_header_widget(self._pill)
+        self._update_status()

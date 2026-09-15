@@ -399,3 +399,35 @@ spinner {
   color: @accent;
   -gtk-icon-source: -gtk-icontheme("process-working-symbolic");
 }
+
+/* ---- scan banner (top of the content area) -------------------------------- */
+.scan-banner {
+  background-color: @bg_surface;
+  border-top: 2px solid @accent;
+  border-bottom: 1px solid @line;
+  padding: 10px 20px;
+}
+.scan-banner .banner-title {
+  font-weight: 500;
+}
+.scan-banner .banner-stats {
+  font-size: 11pt;
+  font-weight: 500;
+}
+.scan-banner .banner-eta {
+  background-color: @bg_sunken;
+  border: 1px solid @line;
+  border-radius: 4px;
+  color: @fg;
+  font-family: "Ubuntu Mono", "DejaVu Sans Mono", monospace;
+  font-size: 10pt;
+  padding: 4px 10px;
+}
+.scan-banner .banner-stop image {
+  color: @danger;
+}
+.scan-banner progressbar.banner-progress trough,
+.scan-banner progressbar.banner-progress progress {
+  min-height: 8px;
+  border-radius: 4px;
+}

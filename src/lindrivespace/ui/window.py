@@ -92,17 +92,29 @@ class MainWindow(Gtk.ApplicationWindow):
         outer.pack_start(self.error_bar, False, False, 0)
         body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         outer.pack_start(body, True, True, 0)
+        self._body_box = body
 
         self.sidebar = Sidebar(PAGES)
         self.sidebar.connect("page-changed", lambda _sb, pid: self.show_page(pid))
         body.pack_start(self.sidebar, False, False, 0)
+
+        # Content column: the scan banner (top of the content area) above the page stack.
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        content.set_hexpand(True)
+        content.set_vexpand(True)
+        body.pack_start(content, True, True, 0)
+
+        from lindrivespace.ui.widgets.scan_banner import ScanBanner
+
+        self.scan_banner = ScanBanner(self.app.theme, self.app.scan_registry, self.app.format_bytes)
+        content.pack_start(self.scan_banner, False, False, 0)
 
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.NONE)
         self.stack.set_hexpand(True)
         self.stack.set_vexpand(True)
         self.stack.get_style_context().add_class("content-area")
-        body.pack_start(self.stack, True, True, 0)
+        content.pack_start(self.stack, True, True, 0)
 
         for spec in PAGES:
             self._instantiate_page(spec)

@@ -48,6 +48,8 @@ class ScanEntry:
     finished_at: float = 0.0
     finished_text: str = ""  # "YYYY-MM-DD HH:MM" once done
     errors: int = 0
+    expected_bytes: int = 0  # used bytes of the mount (or last scan's total); 0 = unknown
+    last_alloc: int = 0  # total from the previous completed scan of this path
     handlers: list[int] = field(default_factory=list)
 
     @property
@@ -60,6 +62,23 @@ class ScanEntry:
             return 0.0
         end = self.finished_at or time.monotonic()
         return end - self.started_at
+
+
+def expected_bytes(path: str, last_alloc: int = 0) -> int:
+    """How many bytes a scan of ``path`` should reach, for progress and countdown.
+
+    A mountpoint's used bytes (``statvfs``) are exact for a full-mount scan; for
+    any other folder the previous completed scan's total is the best estimate.
+    """
+    import os
+
+    try:
+        if os.path.ismount(path):
+            st = os.statvfs(path)
+            return max(0, (st.f_blocks - st.f_bfree) * st.f_frsize)
+    except OSError:
+        pass
+    return max(0, last_alloc)
 
 
 class ScanRegistry(GObject.GObject):
@@ -168,6 +187,9 @@ class ScanRegistry(GObject.GObject):
         entry.started_at = time.monotonic()
         entry.finished_at = 0.0
         entry.errors = 0
+        entry.entries = 0
+        entry.alloc = 0
+        entry.expected_bytes = expected_bytes(path, entry.last_alloc)
         log.info("scan starting: %s", path)
         try:
             entry.controller.start(path, self._options_factory())
@@ -202,6 +224,8 @@ class ScanRegistry(GObject.GObject):
         entry.entries = controller.entries
         root = entry.model.root
         entry.alloc = root.alloc if root is not None else entry.alloc
+        if not cancelled:
+            entry.last_alloc = entry.alloc
         entry.state = STATE_CANCELLED if cancelled else STATE_DONE
         entry.finished_text = time.strftime("%Y-%m-%d %H:%M")
         log.info(

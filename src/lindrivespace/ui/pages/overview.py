@@ -209,7 +209,11 @@ class OverviewPage(BasePage):
         if entry is None:
             return data
         if entry.state == "scanning":
-            detail = f"{entry.entries:,} entries" if entry.entries else ""
+            if entry.expected_bytes:
+                pct = min(99, int(entry.alloc * 100 / entry.expected_bytes))
+                detail = f"{pct} % · {self.app.format_bytes(entry.alloc)}"
+            else:
+                detail = self.app.format_bytes(entry.alloc) if entry.alloc else ""
         elif entry.state == "done":
             detail = self.app.format_bytes(entry.alloc) if entry.alloc else ""
         else:
@@ -347,18 +351,10 @@ class OverviewPage(BasePage):
             "udev monitor live" if self.service.monitor_available else "udev monitor unavailable"
         )
         base = f"{mount_count} mounts on {disk_count} disks · {hidden_text} · {monitor_text}"
-        active = self.registry.active_entry
-        if active is not None:
-            entries = f" · {active.entries:,} entries" if active.entries else ""
-            queued = len(self.registry.queue)
-            queued_text = f" · {queued} more queued" if queued else ""
-            self.subtitle_label.set_text(f"Scanning {active.path}{entries}{queued_text}")
-            self.header_spinner.show()
-            self.header_spinner.start()
-        else:
-            self.subtitle_label.set_text(base)
-            self.header_spinner.stop()
-            self.header_spinner.hide()
+        # The scan banner above the page carries the live scan; keep the subtitle factual.
+        self.subtitle_label.set_text(base)
+        self.header_spinner.stop()
+        self.header_spinner.hide()
 
     # ---- public API (called by MainWindow.record_scan) ----------------------
 
