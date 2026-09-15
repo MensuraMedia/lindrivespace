@@ -44,6 +44,7 @@ class MountCardData:
     scan_state: str = "idle"  # idle | queued | scanning | done | cancelled
     scan_detail: str = ""  # "23,001 entries" while scanning, "6.2 GB" when done
     favorite: bool = False  # starred in Favorites
+    role: str = ""  # "primary" | "secondary" | ""
 
 
 def _icon_name(kind: str) -> str:

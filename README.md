@@ -27,6 +27,7 @@ Ubuntu's typeface and colour language.
 ## Features
 
 ### Overview — mounts and partitions
+- **List view (default)**: disks as section rows and one sortable row per mount with device, type, used, free, total, an inline used-% bar, the last scan and a star; double-click to scan, right-click for Scan, Open, Favorite and primary/secondary. A "Cards" view is one click away.
 - **Scans start by themselves.** A couple of seconds after launch every physical mount is queued (primary, secondary, `/`, then the rest). A scan strip at the top of the content area shows the running scan with a real progress bar (scanned of the mount's used space), the rate and an estimated countdown, plus Pause and Stop; cards show their own progress. Turn the auto-scan off under Settings › Scanning.
 - Every mounted filesystem as a card, grouped by physical disk (NVMe, SATA, USB, loop), with label,
   device, filesystem type, used / free / total and a usage bar that turns amber at 85 % and red at 95 %.

@@ -2,6 +2,11 @@
 
 Format: date, decision, context, consequences. Newest first.
 
+## 2026-09-15 — Overview view types (user)
+Context: four mockups (cards, list, capacity stacks, treemap). User chose **2 · List** as the default;
+no Map view is wanted. Cards remain available behind a "List | Cards" switcher (settings `overview.view`).
+Capacity stacks are not built for now.
+
 ## 2026-09-15 — Direction C dropped; Explorer = A table + collapsible D panel (user)
 Context: user instruction mid-build: "no need to build in Direction C. only direction A and
 Direction D's sidebar but make sure it can collapse".

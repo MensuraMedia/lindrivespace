@@ -173,13 +173,14 @@ class _FakeWindow:
         self.app = _FakeApp(settings)
         self.scan_history: dict[str, str] = {}
 
-    def request_scan(self, path: str) -> None:  # pragma: no cover - monkeypatched in tests
+    def request_scan(self, path: str, force: bool = False) -> None:  # pragma: no cover
         pass
 
 
 @pytest.fixture(scope="module")
 def window():  # type: ignore[no-untyped-def]
     settings = Settings(path=Path(tempfile.mkdtemp(prefix="lds-overview-")) / "settings.json")
+    settings.set("overview.view", "cards")  # the card tests below exercise the cards view
     win = _FakeWindow(settings)
 
     offscreen = Gtk.OffscreenWindow()
@@ -251,7 +252,9 @@ def test_scan_button_click_calls_window_request_scan(
     overview_page, monkeypatch: pytest.MonkeyPatch
 ) -> None:  # type: ignore[no-untyped-def]
     calls: list[str] = []
-    monkeypatch.setattr(overview_page.window, "request_scan", lambda path: calls.append(path))
+    monkeypatch.setattr(
+        overview_page.window, "request_scan", lambda path, force=False: calls.append(path)
+    )
 
     card = _all_cards(overview_page)["/home"]
     card.scan_button.clicked()
@@ -267,3 +270,37 @@ def test_refresh_scan_history_updates_card_label(overview_page) -> None:  # type
     card = _all_cards(overview_page)["/home"]
     assert card.scanned_label.get_text() == "scanned 2026-09-14 18:41"
     assert overview_page.kpi_scanned.value_label.get_text() == "1"
+
+
+def test_list_view_rows_and_switching(overview_page, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """List view: one row per mount under its disk row; double-click scans; switch back."""
+    page = overview_page
+    page.set_view("list")
+    assert page.current_view == "list" and page.mount_list is not None
+    store = page.mount_list.store
+    mount_rows = 0
+    parent = store.get_iter_first()
+    while parent is not None:
+        assert store.get_value(parent, 0) == "disk"
+        child = store.iter_children(parent)
+        while child is not None:
+            mount_rows += 1
+            child = store.iter_next(child)
+        parent = store.iter_next(parent)
+    assert mount_rows == 4  # /, /boot/efi, /home, /mnt/data (hidden mounts off)
+    calls: list[tuple[str, bool]] = []
+    monkeypatch.setattr(
+        page.window, "request_scan", lambda mp, force=False: calls.append((mp, force))
+    )
+    first_mount = store.iter_children(store.get_iter_first())
+    page.mount_list.view.row_activated(
+        store.get_path(first_mount), page.mount_list.view.get_column(0)
+    )
+    assert calls and calls[0][1] is True
+    # star column toggles the favourite
+    fav_calls: list[tuple[str, bool]] = []
+    page.mount_list.connect("favorite-toggled", lambda _l, mp, on: fav_calls.append((mp, on)))
+    page.mount_list.emit("favorite-toggled", calls[0][0], True)
+    assert fav_calls == [(calls[0][0], True)]
+    page.set_view("cards")
+    assert page.current_view == "cards" and page.mount_list is None and page._cards

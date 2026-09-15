@@ -556,3 +556,8 @@ treeview.view check:checked {
   -gtk-icon-transform: scale(0.8);
   color: #ffffff;
 }
+
+/* ---- Overview list view ---------------------------------------------------- */
+treeview.view.grid-table {
+  background-color: @bg_surface;
+}
