@@ -6,6 +6,10 @@
 
 ## Changes
 <!-- Add newest first -->
+- [WP6 tree model + controller](changes/2026-09-14-wp6-tree-model-controller.md) — lazy TreeStore, draw-time formatting, drain
+- [WP5 widgets](changes/2026-09-14-wp5-widgets.md) — bar renderer, ring, mount card, KPI tile
+- [WP3 mounts](changes/2026-09-14-wp3-mounts.md) — mount/disk topology, udev fd
+- [WP2 scanner](changes/2026-09-14-wp2-scanner.md) — scanner, units, CLI helper
 - [WP1 skeleton](changes/2026-09-14-wp1-skeleton.md) — M0 app shell, contracts, tests
 
 ## Decisions
