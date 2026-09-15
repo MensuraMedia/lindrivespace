@@ -32,7 +32,8 @@ class Dimensions:
     INDENT = 16
 
     # Cards & rings
-    CARD_WIDTH = 260
+    CARD_WIDTH = 300
+    CARD_WIDTH_COMPACT = 210
     CARD_HEIGHT = 120
     CARD_RADIUS = 6
     RING_SIZE = 64

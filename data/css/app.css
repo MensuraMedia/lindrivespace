@@ -95,7 +95,7 @@ headerbar.lds-header button:checked {
 }
 .nav-button-bottom {
   border-top: 1px solid @line;
-  border-bottom: none;
+  border-bottom: 1px solid @line;
 }
 .nav-button:focus {
   outline: none;
@@ -243,7 +243,10 @@ treeview.view.expander {
   color: @fg_dim;
 }
 treeview.view.separator {
-  color: @line;
+  color: @highlight;
+}
+treeview.view.grid-table {
+  -GtkTreeView-grid-line-width: 1;
 }
 
 /* ---- status bar --------------------------------------------------------- */

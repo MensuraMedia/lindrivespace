@@ -1,0 +1,105 @@
+<title>Overview View Mockups</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap">
+<style>
+  :root{--canvas:#495060;--surface:#343946;--surface2:#2d323d;--sunken:#21252f;--deep:#1b1e29;--line:#1c1f28;--hi:#4c505e;--fg:#eeeeee;--muted:#b9bcc6;--dim:#7d8290;--accent:#e95420;--hot:#fd5c01;--warm:#aea79f;--aub:#772953;--ok:#3fb950;--warn:#f5a623;--danger:#e0362c;--ui:"Ubuntu","Cantarell",sans-serif;--mono:"Ubuntu Mono","DejaVu Sans Mono",monospace}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--fg);font-family:var(--ui);font-size:14px;line-height:1.45}
+  .wrap{max-width:1240px;margin:0 auto;padding:32px 24px 64px}
+  .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+  h1{font-size:30px;font-weight:300;margin:6px 0 8px}h1 b{font-weight:500}
+  .lede{max-width:72ch;color:var(--muted);margin:0 0 28px}
+  .board{margin-bottom:44px}
+  .board-head{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:baseline;margin-bottom:12px}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--accent);border:1px solid var(--accent);border-radius:3px;padding:2px 8px;white-space:nowrap}
+  .board h2{margin:0;font-size:20px;font-weight:500}
+  .board-head p{grid-column:2;margin:0;color:var(--muted);max-width:84ch}.board-head p b{color:var(--fg);font-weight:500}
+  .fit{overflow:hidden;border-radius:10px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  .panel{width:1030px;transform-origin:0 0;background:var(--surface2);padding:18px 24px;font-size:13px;height:440px}
+  .toprow{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .toprow h3{margin:0;font-size:16px;font-weight:500;flex:1}
+  .seg{display:flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .seg span{padding:4px 12px;font-size:12px;color:var(--muted);background:var(--surface2);border-right:1px solid var(--line)}
+  .seg span:last-child{border-right:none}.seg span.on{background:var(--accent);color:#fff;font-weight:500}
+  .mono{font-family:var(--mono)}.dim{color:var(--dim)}.muted{color:var(--muted)}
+  .st{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+  .bar{height:10px;background:var(--sunken);border:1px solid var(--line);border-radius:3px;overflow:hidden;position:relative}
+  .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent)}
+  .badge{font-size:9px;letter-spacing:1px;border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:1px 5px;margin-left:6px}
+  /* A cards */
+  .grid{display:grid;grid-template-columns:repeat(3,300px);gap:12px}
+  .card{background:var(--surface);border:1px solid var(--line);border-top-color:var(--hi);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:5px}
+  .card b{font-size:13.5px}.card .row{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+  .btn{border:1px solid var(--line);border-radius:4px;padding:3px 10px;font-size:12px;background:var(--surface2)}
+  /* B list */
+  table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+  th{font-size:11px;color:var(--muted);text-align:left;font-weight:500;letter-spacing:.04em;padding:6px 10px;border-bottom:1px solid var(--hi);background:var(--surface)}
+  td{padding:6px 10px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);font-size:12.5px}
+  td.r,th.r{text-align:right}
+  /* C capacity stack */
+  .disk{margin-bottom:16px}
+  .stack{display:flex;height:34px;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--sunken)}
+  .seg2{position:relative;border-right:1px solid var(--deep);display:flex;align-items:center;padding:0 8px;font-size:11.5px;white-space:nowrap;overflow:hidden}
+  .seg2 i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);opacity:.85;z-index:0}
+  .seg2 span{position:relative;z-index:1}
+  .seg2.free{background:repeating-linear-gradient(135deg,var(--sunken),var(--sunken) 6px,var(--surface) 6px,var(--surface) 12px);color:var(--dim)}
+  .legend{display:flex;gap:16px;font-size:11.5px;color:var(--muted);margin-top:6px}
+  /* D treemap */
+  .tm{position:relative;height:330px;background:var(--sunken);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .tm div{position:absolute;border:1px solid var(--deep);padding:6px 8px;font-size:12px;overflow:hidden}
+  .tm div .fill{position:absolute;left:0;bottom:0;right:0;background:var(--accent);opacity:.8;z-index:0}
+  .tm div span{position:relative;z-index:1;display:block}
+  @media (max-width:640px){.board-head{grid-template-columns:1fr}.board-head p{grid-column:1}}
+</style>
+<div class="wrap">
+  <div class="eyebrow">LinDriveSpace · Overview</div>
+  <h1><b>Overview</b> view types</h1>
+  <p class="lede">The primary drive and mountpoint section gets a view switcher (segmented control, remembered in settings). Four treatments of the same mounts — this machine's nvme0n1 (/, /boot/efi, /home) and sda (/mnt/data). Hidden and virtual mounts stay in one compact group underneath in every view.</p>
+
+  <section class="board"><div class="board-head"><span class="tag">1 · Cards</span><h2>Uniform cards, grouped by disk</h2><p><b>Today's view, corrected.</b> Every card is the same 300 px width in every group; primary/secondary badges; bar gauge; star to favourite; Scan/Rescan. Best for a handful of mounts.</p></div>
+  <div class="fit"><div class="panel">
+    <div class="toprow"><h3>Mounted filesystems</h3><div class="seg"><span class="on">Cards</span><span>List</span><span>Capacity</span><span>Map</span></div></div>
+    <div class="st">nvme0n1 <span class="mono dim" style="text-transform:none;letter-spacing:0"> WD_BLACK SN770 2TB · NVME</span></div>
+    <div class="grid" style="margin:8px 0 16px">
+      <div class="card"><b>/ <span class="badge">PRIMARY</span></b><span class="mono dim">nvme0n1p2 · ext4</span><span>24.3 GB used · 80.8 GB free of 105.1 GB</span><div class="bar"><i style="width:23%"></i></div><div class="row"><span class="dim">scanned 06:27 · 23.3 GB</span><span>☆ <span class="btn">Rescan</span></span></div></div>
+      <div class="card"><b>/home <span class="badge" style="border-color:var(--warm);color:var(--warm)">SECONDARY</span></b><span class="mono dim">nvme0n1p3 · ext4</span><span>157.4 GB used · 1.70 TB free of 1.86 TB</span><div class="bar"><i style="width:8%"></i></div><div class="row"><span class="dim">scanned 06:27 · 157.1 GB</span><span>★ <span class="btn">Rescan</span></span></div></div>
+      <div class="card"><b>/boot/efi</b><span class="mono dim">nvme0n1p1 · vfat</span><span>6.4 MB used · 529.4 MB free of 535.8 MB</span><div class="bar"><i style="width:1%"></i></div><div class="row"><span class="dim">scanned 06:27</span><span>☆ <span class="btn">Rescan</span></span></div></div>
+    </div>
+    <div class="st">sda <span class="mono dim" style="text-transform:none;letter-spacing:0"> Samsung SSD 870 EVO 1TB · SATA</span></div>
+    <div class="grid" style="margin-top:8px"><div class="card"><b>/mnt/data</b><span class="mono dim">sda1 · ext4</span><span>38.9 GB used · 944.4 GB free of 983.4 GB</span><div class="bar"><i style="width:4%"></i></div><div class="row"><span class="dim">scanned 06:29 · 34.1 GB</span><span>☆ <span class="btn">Rescan</span></span></div></div></div>
+  </div></div></section>
+
+  <section class="board"><div class="board-head"><span class="tag">2 · List</span><h2>One row per mount, inline bars</h2><p><b>Dense.</b> Sortable columns like the Explorer: mount, device, type, used, free, total, a Share bar, last scan, actions. Scales to servers with dozens of mounts; disks are section rows.</p></div>
+  <div class="fit"><div class="panel">
+    <div class="toprow"><h3>Mounted filesystems</h3><div class="seg"><span>Cards</span><span class="on">List</span><span>Capacity</span><span>Map</span></div></div>
+    <table><tr><th>Mount</th><th>Device</th><th>Type</th><th class="r">Used</th><th class="r">Free</th><th class="r">Total</th><th style="width:180px">Used %</th><th>Scanned</th><th></th></tr>
+      <tr><td colspan="9" class="st" style="background:var(--surface);border-right:none">nvme0n1 · WD_BLACK SN770 2TB · NVMe</td></tr>
+      <tr><td><b>/</b> <span class="badge">PRIMARY</span></td><td class="mono">nvme0n1p2</td><td>ext4</td><td class="r">24.3 GB</td><td class="r">80.8 GB</td><td class="r">105.1 GB</td><td><div class="bar"><i style="width:23%"></i></div></td><td class="dim">06:27 · 23.3 GB</td><td>★ <span class="btn">Rescan</span></td></tr>
+      <tr><td><b>/home</b></td><td class="mono">nvme0n1p3</td><td>ext4</td><td class="r">157.4 GB</td><td class="r">1.70 TB</td><td class="r">1.86 TB</td><td><div class="bar"><i style="width:8%"></i></div></td><td class="dim">06:27 · 157.1 GB</td><td>☆ <span class="btn">Rescan</span></td></tr>
+      <tr><td><b>/boot/efi</b></td><td class="mono">nvme0n1p1</td><td>vfat</td><td class="r">6.4 MB</td><td class="r">529.4 MB</td><td class="r">535.8 MB</td><td><div class="bar"><i style="width:1%"></i></div></td><td class="dim">06:27</td><td>☆ <span class="btn">Rescan</span></td></tr>
+      <tr><td colspan="9" class="st" style="background:var(--surface);border-right:none">sda · Samsung SSD 870 EVO 1TB · SATA</td></tr>
+      <tr><td><b>/mnt/data</b></td><td class="mono">sda1</td><td>ext4</td><td class="r">38.9 GB</td><td class="r">944.4 GB</td><td class="r">983.4 GB</td><td><div class="bar"><i style="width:4%"></i></div></td><td class="dim">06:29 · 34.1 GB</td><td>☆ <span class="btn">Rescan</span></td></tr>
+    </table>
+  </div></div></section>
+
+  <section class="board"><div class="board-head"><span class="tag">3 · Capacity</span><h2>One stacked bar per physical disk</h2><p><b>Shows the disk, not just the mounts.</b> Each disk is a bar; partitions are segments proportional to their size, the used part of each segment is filled in accent, unallocated space is hatched. Click a segment to scan it. Answers "where is the space on this drive" in one glance.</p></div>
+  <div class="fit"><div class="panel">
+    <div class="toprow"><h3>Mounted filesystems</h3><div class="seg"><span>Cards</span><span>List</span><span class="on">Capacity</span><span>Map</span></div></div>
+    <div class="disk"><div class="row" style="display:flex;justify-content:space-between;margin-bottom:6px"><span><b>nvme0n1</b> <span class="mono dim">WD_BLACK SN770 2TB · NVMe · 2.00 TB</span></span><span class="dim">181.7 GB used · 1.78 TB free</span></div>
+      <div class="stack"><div class="seg2" style="width:6%"><i style="width:1%"></i><span>/boot/efi 536 MB</span></div><div class="seg2" style="width:14%"><i style="width:23%"></i><span>/ 105 GB · 23 %</span></div><div class="seg2" style="width:80%"><i style="width:8%"></i><span>/home 1.86 TB · 8 %</span></div></div></div>
+    <div class="disk"><div class="row" style="display:flex;justify-content:space-between;margin-bottom:6px"><span><b>sda</b> <span class="mono dim">Samsung SSD 870 EVO 1TB · SATA · 1.00 TB</span></span><span class="dim">38.9 GB used · 944 GB free</span></div>
+      <div class="stack"><div class="seg2" style="width:98%"><i style="width:4%"></i><span>/mnt/data 983 GB · 4 %</span></div><div class="seg2 free" style="width:2%"><span></span></div></div></div>
+    <div class="legend"><span><i style="display:inline-block;width:10px;height:10px;background:var(--accent);vertical-align:-1px"></i> used</span><span><i style="display:inline-block;width:10px;height:10px;background:var(--sunken);border:1px solid var(--line);vertical-align:-1px"></i> free</span><span><i style="display:inline-block;width:10px;height:10px;background:repeating-linear-gradient(135deg,var(--sunken),var(--sunken) 3px,var(--surface) 3px,var(--surface) 6px);vertical-align:-1px"></i> unallocated</span></div>
+  </div></div></section>
+
+  <section class="board"><div class="board-head"><span class="tag">4 · Map</span><h2>Treemap of mounts by capacity</h2><p><b>Proportional.</b> Every mount is a rectangle sized by its capacity; the accent fill inside each rises with usage, so a full small partition still stands out. Same treemap engine as the Analysis panel; click a rectangle to scan or open it. Best on machines with many disks of very different sizes.</p></div>
+  <div class="fit"><div class="panel">
+    <div class="toprow"><h3>Mounted filesystems</h3><div class="seg"><span>Cards</span><span>List</span><span>Capacity</span><span class="on">Map</span></div></div>
+    <div class="tm">
+      <div style="left:0;top:0;width:66%;height:100%"><div class="fill" style="height:8%"></div><span><b>/home</b> · 1.86 TB</span><span class="dim">nvme0n1p3 · 157 GB used · 8 %</span></div>
+      <div style="left:66%;top:0;width:34%;height:64%"><div class="fill" style="height:4%"></div><span><b>/mnt/data</b> · 983 GB</span><span class="dim">sda1 · 38.9 GB used · 4 %</span></div>
+      <div style="left:66%;top:64%;width:30%;height:36%"><div class="fill" style="height:23%"></div><span><b>/</b> · 105 GB</span><span class="dim">nvme0n1p2 · 23 %</span></div>
+      <div style="left:96%;top:64%;width:4%;height:36%"><div class="fill" style="height:1%"></div><span></span></div>
+    </div>
+  </div></div></section>
+</div>
+<script>(function(){function fit(){document.querySelectorAll('.fit').forEach(f=>{const a=f.firstElementChild;const s=Math.min(1,f.clientWidth/1030);a.style.transform=`scale(${s})`;f.style.height=(440*s)+'px';});}fit();addEventListener('resize',fit);})();</script>

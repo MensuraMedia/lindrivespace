@@ -17,7 +17,11 @@ import pytest
 
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gdk, GLib, Gtk  # noqa: E402
+from gi.repository import (  # noqa: E402
+    Gdk,
+    GLib,
+    Gtk,  # noqa: E402
+)
 
 
 def _pump_until(condition, timeout: float = 10.0) -> None:  # type: ignore[no-untyped-def]
@@ -133,3 +137,25 @@ def test_copy_report_sets_clipboard_text(window, page) -> None:  # type: ignore[
         pytest.skip("no clipboard manager available in this test environment")
     assert page._report.system.hostname in text
     assert "Hardware report" in text
+
+
+def test_every_card_has_copy_and_as_text(window) -> None:  # type: ignore[no-untyped-def]
+    from lindrivespace.ui.widgets.settings_rows import PrefGroup
+
+    page = window.pages["hardware"]
+
+    def collect(widget):  # type: ignore[no-untyped-def]
+        found = []
+        if isinstance(widget, PrefGroup):
+            found.append(widget)
+        if isinstance(widget, Gtk.Container):
+            for child in widget.get_children():
+                found.extend(collect(child))
+        return found
+
+    groups = collect(page)
+    assert groups, "expected PrefGroup cards"
+    for group in groups:
+        assert group.copy_button is not None
+        text = group.as_text()
+        assert text.startswith(group.title)

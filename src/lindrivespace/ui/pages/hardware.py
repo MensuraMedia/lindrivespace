@@ -105,6 +105,11 @@ def _format_uptime(seconds: float) -> str:
     return " ".join(parts)
 
 
+def _copyable(group: PrefGroup) -> PrefGroup:
+    group.enable_copy()
+    return group
+
+
 class HardwarePage(BasePage):
     title = "Hardware"
 
@@ -269,7 +274,7 @@ class HardwarePage(BasePage):
     # ---- groups -----------------------------------------------------------------
 
     def _build_system_group(self, system: hw.SystemInfo) -> PrefGroup:
-        group = PrefGroup("System")
+        group = _copyable(PrefGroup("System"))
         group.add_row(PrefRow("Hostname", self._value_label(system.hostname or "—")))
         group.add_row(PrefRow("Distribution", self._value_label(system.distro)))
         group.add_row(PrefRow("Kernel", self._value_label(system.kernel, mono=True)))
@@ -280,7 +285,7 @@ class HardwarePage(BasePage):
         return group
 
     def _build_board_group(self, board: hw.BoardInfo) -> PrefGroup:
-        group = PrefGroup("Motherboard & firmware")
+        group = _copyable(PrefGroup("Motherboard & firmware"))
         system_line = " ".join(
             p for p in (board.sys_vendor, board.product_name, board.product_version) if p
         )
@@ -296,7 +301,7 @@ class HardwarePage(BasePage):
         return group
 
     def _build_cpu_memory_group(self, cpu: hw.CpuInfo, memory: hw.MemoryInfo) -> PrefGroup:
-        group = PrefGroup("Processor & memory")
+        group = _copyable(PrefGroup("Processor & memory"))
         group.add_row(PrefRow("Model", self._value_label(cpu.model)))
         group.add_row(
             PrefRow(
@@ -328,7 +333,7 @@ class HardwarePage(BasePage):
         return group
 
     def _build_controllers_group(self, controllers: tuple[hw.StorageController, ...]) -> PrefGroup:
-        group = PrefGroup("Storage controllers")
+        group = _copyable(PrefGroup("Storage controllers"))
         if not controllers:
             group.add_row(self._info_label("No PCI storage controllers detected."))
             return group
@@ -341,7 +346,7 @@ class HardwarePage(BasePage):
         return group
 
     def _build_drive_types_group(self, drive_types: tuple[str, ...]) -> PrefGroup:
-        group = PrefGroup("Supported drive types")
+        group = _copyable(PrefGroup("Supported drive types"))
         if not drive_types:
             group.add_row(self._info_label("None detected."))
             return group
@@ -361,7 +366,7 @@ class HardwarePage(BasePage):
         return group
 
     def _build_disks_group(self, disks: tuple[hw.DiskHardware, ...]) -> PrefGroup:
-        group = PrefGroup("Disks")
+        group = _copyable(PrefGroup("Disks"))
         if not disks:
             group.add_row(self._info_label("No disks detected."))
             return group
@@ -382,6 +387,8 @@ class HardwarePage(BasePage):
                 ]
             )
         tree = Gtk.TreeView(model=store)
+        tree.set_grid_lines(Gtk.TreeViewGridLines.BOTH)
+        tree.get_style_context().add_class("grid-table")
         tree.set_fixed_height_mode(True)
         tree.set_headers_visible(True)
         tree.set_hexpand(True)
@@ -415,7 +422,7 @@ class HardwarePage(BasePage):
         return group
 
     def _build_io_group(self, disks: tuple[hw.DiskHardware, ...]) -> PrefGroup:
-        group = PrefGroup("I/O activity")
+        group = _copyable(PrefGroup("I/O activity"))
         if not disks:
             group.add_row(self._info_label("No disks to monitor."))
             self.io_store = None
@@ -425,6 +432,8 @@ class HardwarePage(BasePage):
         for disk in disks:
             store.append([disk.kname, "—", "—", "—", "—"])
         tree = Gtk.TreeView(model=store)
+        tree.set_grid_lines(Gtk.TreeViewGridLines.BOTH)
+        tree.get_style_context().add_class("grid-table")
         tree.set_fixed_height_mode(True)
         tree.set_headers_visible(True)
         tree.set_hexpand(True)
@@ -449,7 +458,7 @@ class HardwarePage(BasePage):
     def _build_filesystems_group(
         self, filesystems: tuple[str, ...], pseudo: tuple[str, ...]
     ) -> PrefGroup:
-        group = PrefGroup("Filesystems supported")
+        group = _copyable(PrefGroup("Filesystems supported"))
         fs_label = Gtk.Label(label=", ".join(filesystems) if filesystems else "None detected.")
         fs_label.set_xalign(0.0)
         fs_label.set_line_wrap(True)
@@ -463,7 +472,7 @@ class HardwarePage(BasePage):
         return group
 
     def _build_notes_group(self, notes: tuple[str, ...]) -> PrefGroup:
-        group = PrefGroup("Notes")
+        group = _copyable(PrefGroup("Notes"))
         if not notes:
             group.add_row(self._info_label("No notes."))
             return group

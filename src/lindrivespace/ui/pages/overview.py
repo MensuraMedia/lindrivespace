@@ -16,11 +16,14 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
 
+from lindrivespace.config.layout import Layout  # noqa: E402
 from lindrivespace.core.mounts import DiskInfo, MountInfo  # noqa: E402
 from lindrivespace.core.units import format_bytes  # noqa: E402
 from lindrivespace.models.mounts_model import MountsModel  # noqa: E402
 from lindrivespace.services.mounts_service import MountsService  # noqa: E402
 from lindrivespace.ui.pages.base import BasePage  # noqa: E402
+
+_DIMS = Layout.dimensions
 from lindrivespace.ui.widgets import KpiTile, MountCard, MountCardData  # noqa: E402
 
 _STALE_SECONDS = 30.0
@@ -55,6 +58,10 @@ class OverviewPage(BasePage):
         self.service.start()
         self.registry = self.app.scan_registry
         self.registry.connect("entry-changed", self._on_scan_entry_changed)
+        from lindrivespace.services.favorites import get_store
+
+        self.favorites = get_store(self.app)
+        self.favorites.connect("changed", lambda _s: self.refresh_scan_history())
         self.registry.connect("active-changed", lambda _r, _p: self._update_subtitle())
 
     # ---- construction -------------------------------------------------------
@@ -153,10 +160,18 @@ class OverviewPage(BasePage):
             return (rank.get(roles.get(m.mountpoint, ""), 2), m.mountpoint)
 
         groups: list[tuple[int, DiskInfo, list[MountInfo]]] = []
+        hidden_mounts: list[MountInfo] = []
         for disk in self.model.disks:
-            if not self.model.is_visible_disk(disk, show_hidden=show_hidden):
+            physical = self.model.is_visible_disk(disk, show_hidden=False)
+            if not physical:
+                if show_hidden:
+                    hidden_mounts.extend(disk.mounts)
                 continue
-            mounts = [m for m in disk.mounts if self.model.is_visible(m, show_hidden=show_hidden)]
+            mounts = [m for m in disk.mounts if self.model.is_visible(m, show_hidden=False)]
+            if show_hidden:
+                hidden_mounts.extend(
+                    m for m in disk.mounts if not self.model.is_visible(m, show_hidden=False)
+                )
             if not mounts:
                 continue
             mounts.sort(key=mount_rank)
@@ -165,6 +180,9 @@ class OverviewPage(BasePage):
         groups.sort(key=lambda g: g[0])
         for _r, disk, mounts in groups:
             self.groups_box.pack_start(self._build_disk_group(disk, mounts), False, False, 0)
+        if hidden_mounts:
+            hidden_mounts.sort(key=lambda m: m.mountpoint)
+            self.groups_box.pack_start(self._build_hidden_group(hidden_mounts), False, False, 0)
         self.groups_box.show_all()
 
         if self._selected_mountpoint and self._selected_mountpoint in self._cards:
@@ -190,21 +208,52 @@ class OverviewPage(BasePage):
 
         box.pack_start(header, False, False, 0)
 
+        box.pack_start(self._flow(mounts, compact=False), False, False, 0)
+        return box
+
+    def _flow(self, mounts: list[MountInfo], *, compact: bool) -> Gtk.FlowBox:
+        """Cards in a wrapping row; every card has the same fixed width so groups line up."""
         flow = Gtk.FlowBox()
         flow.set_selection_mode(Gtk.SelectionMode.NONE)
         flow.set_homogeneous(True)
+        flow.set_halign(Gtk.Align.START)
         flow.set_min_children_per_line(1)
-        flow.set_max_children_per_line(4)
+        flow.set_max_children_per_line(6 if compact else 3)
         flow.set_column_spacing(12)
         flow.set_row_spacing(12)
+        width = _DIMS.CARD_WIDTH_COMPACT if compact else _DIMS.CARD_WIDTH
         for mount in mounts:
-            flow.insert(self._build_card(mount), -1)
-        box.pack_start(flow, False, False, 0)
+            card = self._build_card(mount)
+            card.set_size_request(width, -1)
+            card.set_hexpand(False)
+            child = Gtk.FlowBoxChild()
+            child.set_halign(Gtk.Align.START)
+            child.add(card)
+            flow.insert(child, -1)
+        return flow
+
+    def _build_hidden_group(self, mounts: list[MountInfo]) -> Gtk.Box:
+        """All hidden / virtual mounts (snap loops, tmpfs, …) in one compact group."""
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        name_label = Gtk.Label(label="hidden & virtual")
+        name_label.get_style_context().add_class("section-title")
+        name_label.set_xalign(0.0)
+        header.pack_start(name_label, False, False, 0)
+        detail_label = Gtk.Label(
+            label=f"{len(mounts)} mounts · snap loops, tmpfs, pseudo filesystems"
+        )
+        detail_label.get_style_context().add_class("mono")
+        detail_label.get_style_context().add_class("muted")
+        header.pack_start(detail_label, False, False, 0)
+        box.pack_start(header, False, False, 0)
+        box.pack_start(self._flow(mounts, compact=True), False, False, 0)
         return box
 
     def _card_data(self, mount: MountInfo) -> MountCardData:
         """Card data plus the registry's live scan state for that mountpoint."""
         data = self.model.card_data(mount, self.window.scan_history)
+        data = replace(data, favorite=self.favorites.is_favorite(mount.mountpoint))
         entry = self.registry.get(mount.mountpoint)
         if entry is None:
             return data
@@ -223,6 +272,7 @@ class OverviewPage(BasePage):
             scanned_at=entry.finished_text or data.scanned_at,
             scan_state=entry.state,
             scan_detail=detail,
+            favorite=self.favorites.is_favorite(mount.mountpoint),
         )
 
     def _on_scan_entry_changed(self, _registry: object, path: str) -> None:
@@ -248,6 +298,10 @@ class OverviewPage(BasePage):
         card.usage_label.set_max_width_chars(20)
         card.set_role(self.mount_roles().get(mount.mountpoint))
         card.connect("scan-requested", self._on_card_scan_requested)
+        card.connect(
+            "favorite-toggled",
+            lambda _c, mp, active: self.favorites.add(mp) if active else self.favorites.remove(mp),
+        )
         card.connect("selected", self._on_card_selected)
         self._cards[mount.mountpoint] = card
         self._mounts_by_mountpoint[mount.mountpoint] = mount

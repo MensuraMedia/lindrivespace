@@ -42,6 +42,7 @@ class MountCardData:
     kind: str
     scan_state: str = "idle"  # idle | queued | scanning | done | cancelled
     scan_detail: str = ""  # "23,001 entries" while scanning, "6.2 GB" when done
+    favorite: bool = False  # starred in Favorites
 
 
 def _icon_name(kind: str) -> str:
@@ -85,6 +86,7 @@ class MountCard(Gtk.Frame):
     __gsignals__ = {
         "scan-requested": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
         "selected": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        "favorite-toggled": (GObject.SignalFlags.RUN_FIRST, None, (str, bool)),
     }
 
     def __init__(self, theme: ThemeDefinition, data: MountCardData) -> None:
@@ -150,6 +152,13 @@ class MountCard(Gtk.Frame):
         self.scanned_label.get_style_context().add_class("dim")
         bottom_row.pack_start(self.scanned_label, True, True, 0)
 
+        self._updating_favorite = False
+        self.favorite_button = Gtk.ToggleButton()
+        self.favorite_button.set_relief(Gtk.ReliefStyle.NONE)
+        self.favorite_button.set_tooltip_text("Add to Favorites")
+        self.favorite_button.get_accessible().set_name("Favorite")
+        self.favorite_button.connect("toggled", self._on_favorite_toggled)
+        bottom_row.pack_start(self.favorite_button, False, False, 0)
         self.scan_button = Gtk.Button()
         self.scan_button.connect("clicked", self._on_scan_clicked)
         bottom_row.pack_start(self.scan_button, False, False, 0)
@@ -173,6 +182,14 @@ class MountCard(Gtk.Frame):
             self.spinner.stop()
             self.spinner.hide()
         self.scan_button.set_label("Rescan" if data.scanned_at else "Scan")
+        self._updating_favorite = True
+        self.favorite_button.set_active(data.favorite)
+        star = "starred-symbolic" if data.favorite else "non-starred-symbolic"
+        self.favorite_button.set_image(Gtk.Image.new_from_icon_name(star, Gtk.IconSize.BUTTON))
+        self.favorite_button.set_tooltip_text(
+            "Remove from Favorites" if data.favorite else "Add to Favorites"
+        )
+        self._updating_favorite = False
         self.scan_button.set_sensitive(not scanning and data.scan_state != "queued")
         self.icon.set_from_icon_name(_icon_name(data.kind), Gtk.IconSize.MENU)
         self.gauge.set_percent(_percent(data))
@@ -204,6 +221,11 @@ class MountCard(Gtk.Frame):
     @property
     def role(self) -> str | None:
         return self._role
+
+    def _on_favorite_toggled(self, button: Gtk.ToggleButton) -> None:
+        if self._updating_favorite:
+            return
+        self.emit("favorite-toggled", self._data.mountpoint, button.get_active())
 
     def set_selected(self, selected: bool) -> None:
         """Toggle the "selected" CSS class and the button's emphasis style."""

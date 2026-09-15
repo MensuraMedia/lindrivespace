@@ -69,6 +69,7 @@ class Sidebar(Gtk.Box):
                 first = False
         self.pack_start(top, False, False, 0)
         self.pack_start(Gtk.Box(), True, True, 0)  # spacer pushes Settings down
+        bottom.set_margin_bottom(Layout.spacing.SM)  # same breathing room as the logo area
         self.pack_start(bottom, False, False, 0)
 
     def _make_button(self, spec: PageSpec, is_top: bool) -> Gtk.Button:
