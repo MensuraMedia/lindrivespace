@@ -1,0 +1,309 @@
+/* LinDriveSpace — component rules. Colour tokens are injected above this file
+   as @define-color by ui/theme_loader.py (names from config/theme.py). Fonts are
+   fixed by the design: Ubuntu for UI text, Ubuntu Mono for paths and raw bytes. */
+
+* {
+  font-family: "Ubuntu", "Cantarell", sans-serif;
+  font-size: 10.5pt;
+  outline-width: 0;
+}
+
+window.lds-window,
+.lds-window {
+  background-color: @bg_canvas;
+  color: @fg;
+}
+
+/* ---- header bar (CSD) -------------------------------------------------- */
+headerbar.lds-header {
+  background-color: @bg_surface;
+  background-image: none;
+  border-bottom: 1px solid @line;
+  box-shadow: none;
+  color: @fg;
+  min-height: 44px;
+  padding: 0 6px;
+}
+headerbar.lds-header .header-title {
+  font-weight: 500;
+  color: @fg;
+}
+headerbar.lds-header .header-subtitle {
+  color: @fg_dim;
+  font-size: 9.5pt;
+}
+headerbar.lds-header button {
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+  color: @fg_muted;
+  min-height: 24px;
+  min-width: 24px;
+}
+headerbar.lds-header button:hover {
+  background-color: @bg_surface_2;
+}
+headerbar.lds-header button:active,
+headerbar.lds-header button:checked {
+  background-color: @accent;
+  color: #ffffff;
+}
+
+/* ---- sidebar ------------------------------------------------------------ */
+.sidebar {
+  background-color: @bg_surface;
+  border-right: 1px solid @line;
+}
+.logo-area {
+  background-color: @bg_surface;
+  border-bottom: 1px solid @line;
+  padding: 12px 0;
+}
+.logo-text {
+  color: @fg_muted;
+  font-size: 9pt;
+  letter-spacing: 2px;
+}
+.nav-button {
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  border-bottom: 1px solid @line;
+  border-radius: 0;
+  box-shadow: none;
+  color: @fg_muted;
+  font-size: 9.5pt;
+  margin: 0;
+  min-height: 32px;
+  padding: 0 12px;
+}
+.nav-button:hover {
+  background-color: @bg_surface_2;
+  color: @fg;
+}
+.nav-button.active {
+  background-color: @accent;
+  color: #ffffff;
+  font-weight: 500;
+}
+.nav-button.active image {
+  color: #ffffff;
+}
+.nav-button-top {
+  border-top: 1px solid @line;
+}
+.nav-button-bottom {
+  border-top: 1px solid @line;
+  border-bottom: none;
+}
+.nav-button:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* ---- content ------------------------------------------------------------ */
+.content-area {
+  background-color: @bg_surface_2;
+}
+.page-title {
+  color: @fg;
+  font-size: 14pt;
+  font-weight: 500;
+}
+.page-subtitle {
+  color: @fg_muted;
+  font-size: 9.5pt;
+}
+.section-title {
+  color: @fg_muted;
+  font-size: 8.5pt;
+  font-weight: 500;
+  letter-spacing: 1px;
+  margin-top: 6px;
+}
+.paragraph {
+  color: @fg_muted;
+}
+label {
+  color: @fg;
+}
+label.dim {
+  color: @fg_dim;
+}
+label.muted {
+  color: @fg_muted;
+}
+label.mono {
+  font-family: "Ubuntu Mono", "DejaVu Sans Mono", monospace;
+  font-size: 10pt;
+}
+label.kpi-value {
+  font-size: 20pt;
+  font-weight: 300;
+}
+
+/* ---- cards (Overview) ---------------------------------------------------- */
+.card {
+  background-color: @bg_surface;
+  border: 1px solid @line;
+  border-top: 1px solid @highlight;
+  border-radius: 6px;
+  padding: 12px;
+}
+.card.selected {
+  border: 1px solid @accent;
+}
+.card.raised {
+  box-shadow: 0 6px 14px alpha(#000000, 0.35);
+}
+
+/* ---- buttons ------------------------------------------------------------- */
+button {
+  background-color: @bg_surface_2;
+  background-image: none;
+  border: 1px solid @line;
+  border-radius: 4px;
+  box-shadow: none;
+  color: @fg;
+  padding: 3px 10px;
+  text-shadow: none;
+}
+button:hover {
+  background-color: @bg_surface;
+  border-color: @line_soft;
+}
+button.suggested-action,
+button.primary {
+  background-color: @accent;
+  border-color: @accent;
+  color: #ffffff;
+  font-weight: 500;
+}
+button.suggested-action:hover,
+button.primary:hover {
+  background-color: @accent_hot;
+}
+button.flat {
+  background-color: transparent;
+  border-color: transparent;
+  color: @fg_muted;
+}
+
+/* ---- entries ------------------------------------------------------------- */
+entry {
+  background-color: @bg_sunken;
+  border: 1px solid @line;
+  border-radius: 4px;
+  color: @fg;
+  caret-color: @accent;
+  min-height: 26px;
+  padding: 2px 8px;
+}
+entry:focus {
+  border-color: @accent;
+}
+
+/* ---- tree view (Explorer) ------------------------------------------------ */
+treeview.view {
+  background-color: @bg_surface_2;
+  color: @fg;
+  border-bottom: 1px solid @line;
+}
+treeview.view:hover {
+  background-color: @bg_surface;
+}
+treeview.view:selected {
+  background-color: @bg_deep;
+  color: @fg;
+}
+treeview.view:selected:focus {
+  background-color: @bg_deep;
+}
+treeview.view header button {
+  background-color: @bg_surface;
+  border: none;
+  border-bottom: 1px solid @line;
+  border-right: 1px solid @line;
+  border-radius: 0;
+  color: @fg_muted;
+  font-size: 8.5pt;
+  font-weight: 500;
+  min-height: 28px;
+  padding: 0 8px;
+}
+treeview.view header button:hover {
+  background-color: @bg_surface_2;
+  color: @fg;
+}
+treeview.view header button:active {
+  background-color: @bg_deep;
+}
+treeview.view.expander {
+  color: @fg_dim;
+}
+treeview.view.separator {
+  color: @line;
+}
+
+/* ---- status bar --------------------------------------------------------- */
+.statusbar {
+  background-color: @bg_surface;
+  border-top: 1px solid @line;
+  color: @fg_muted;
+  font-family: "Ubuntu Mono", "DejaVu Sans Mono", monospace;
+  font-size: 9pt;
+  min-height: 26px;
+  padding: 0 12px;
+}
+
+/* ---- pill / breadcrumb --------------------------------------------------- */
+.pill {
+  background-color: @bg_sunken;
+  border: 1px solid @line;
+  border-radius: 12px;
+  color: @fg_muted;
+  padding: 2px 10px;
+}
+.crumbs {
+  background-color: @bg_surface_2;
+  border-bottom: 1px solid @line;
+  padding: 6px 12px;
+}
+
+/* ---- scrollbars ---------------------------------------------------------- */
+scrollbar {
+  background-color: @bg_surface_2;
+  border: none;
+}
+scrollbar slider {
+  background-color: @highlight;
+  border-radius: 4px;
+  min-width: 6px;
+  min-height: 6px;
+}
+scrollbar slider:hover {
+  background-color: @fg_dim;
+}
+
+/* ---- separators / tooltips / popovers ----------------------------------- */
+separator {
+  background-color: @line;
+  min-height: 1px;
+  min-width: 1px;
+}
+tooltip {
+  background-color: @bg_deep;
+  border: 1px solid @line_soft;
+  color: @fg;
+}
+popover,
+menu {
+  background-color: @bg_deep;
+  border: 1px solid @line_soft;
+  color: @fg;
+}
+menuitem:hover {
+  background-color: @accent;
+  color: #ffffff;
+}

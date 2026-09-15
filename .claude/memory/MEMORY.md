@@ -6,6 +6,7 @@
 
 ## Changes
 <!-- Add newest first -->
+- [WP1 skeleton](changes/2026-09-14-wp1-skeleton.md) — M0 app shell, contracts, tests
 
 ## Decisions
 - [Decision Log](decisions.md) — Architectural and design decisions
