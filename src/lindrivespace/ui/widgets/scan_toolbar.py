@@ -28,6 +28,9 @@ class ScanToolbar(Gtk.Box):
         "primary-changed": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
         "hidden-changed": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
         "cross-mounts-changed": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
+        "panel-toggled": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
+        "columns-requested": (GObject.SignalFlags.RUN_FIRST, None, ()),
+        "favorite-toggled": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
     }
 
     def __init__(self, theme: ThemeDefinition, settings: Settings) -> None:
@@ -35,6 +38,7 @@ class ScanToolbar(Gtk.Box):
         self._theme = theme
         self._settings = settings
         self._updating_primary = False
+        self._updating_panel = False
         self._paused = False
 
         self.path_entry = Gtk.Entry()
@@ -93,6 +97,35 @@ class ScanToolbar(Gtk.Box):
         self._set_primary_buttons(allocated)
         self.hidden_button.set_active(bool(settings.get("scan.show_hidden", True)))
         self.cross_mounts_button.set_active(bool(settings.get("scan.cross_mounts", False)))
+
+        panel_icon = "view-sidebar-symbolic"
+        if not Gtk.IconTheme.get_default().has_icon(panel_icon):
+            panel_icon = "sidebar-show-symbolic"
+        self.panel_button = Gtk.ToggleButton()
+        self.panel_button.set_image(Gtk.Image.new_from_icon_name(panel_icon, Gtk.IconSize.BUTTON))
+        self.panel_button.set_tooltip_text("Show/hide insight panel (F9)")
+        self.panel_button.set_active(bool(settings.get("window.panel_visible", True)))
+        self.panel_button.connect("toggled", self._on_panel_toggled)
+        self.pack_end(self.panel_button, False, False, 0)
+
+        self.columns_button = Gtk.Button()
+        self.columns_button.set_image(
+            Gtk.Image.new_from_icon_name("view-column-symbolic", Gtk.IconSize.BUTTON)
+        )
+        self.columns_button.set_tooltip_text("Choose which columns to show")
+        self.columns_button.get_accessible().set_name("Columns")
+        self.columns_button.connect("clicked", lambda _b: self.emit("columns-requested"))
+        self.pack_end(self.columns_button, False, False, 0)
+
+        self._updating_favorite = False
+        self.favorite_button = Gtk.ToggleButton()
+        self.favorite_button.set_image(
+            Gtk.Image.new_from_icon_name("non-starred-symbolic", Gtk.IconSize.BUTTON)
+        )
+        self.favorite_button.set_tooltip_text("Add the selected folder to Favorites (Ctrl+D)")
+        self.favorite_button.get_accessible().set_name("Favorite")
+        self.favorite_button.connect("toggled", self._on_favorite_toggled)
+        self.pack_end(self.favorite_button, False, False, 0)
 
     # ---- path -------------------------------------------------------------
 
@@ -172,6 +205,34 @@ class ScanToolbar(Gtk.Box):
 
     def _on_cross_mounts_toggled(self, button: Gtk.ToggleButton) -> None:
         self.emit("cross-mounts-changed", button.get_active())
+
+    # ---- insight panel toggle (WP9) ------------------------------------------
+
+    def _on_panel_toggled(self, button: Gtk.ToggleButton) -> None:
+        if self._updating_panel:
+            return
+        self.emit("panel-toggled", button.get_active())
+
+    def _on_favorite_toggled(self, button: Gtk.ToggleButton) -> None:
+        if self._updating_favorite:
+            return
+        self.emit("favorite-toggled", button.get_active())
+
+    def set_favorite_active(self, active: bool) -> None:
+        """Reflect whether the current selection is a favourite (no signal)."""
+        self._updating_favorite = True
+        self.favorite_button.set_active(active)
+        icon = "starred-symbolic" if active else "non-starred-symbolic"
+        self.favorite_button.set_image(Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.BUTTON))
+        self._updating_favorite = False
+
+    def set_panel_active(self, active: bool) -> None:
+        """Sync the toggle button without re-emitting ``panel-toggled``."""
+        if self.panel_button.get_active() == active:
+            return
+        self._updating_panel = True
+        self.panel_button.set_active(active)
+        self._updating_panel = False
 
     def set_theme(self, theme: ThemeDefinition) -> None:
         """Kept for API parity with the other Explorer widgets."""

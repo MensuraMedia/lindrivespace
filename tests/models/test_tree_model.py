@@ -49,7 +49,7 @@ def rows(model: ScanTreeModel, it: Gtk.TreeIter | None) -> list[tuple[str, str, 
     out = []
     child = model.store.iter_children(it)
     while child is not None:
-        node = model.node_for_iter(child)
+        node = model.row_for_iter(child)
         if node is None:
             out.append(("…", "", False))
         else:
@@ -59,7 +59,7 @@ def rows(model: ScanTreeModel, it: Gtk.TreeIter | None) -> list[tuple[str, str, 
 
 
 def test_lazy_population_and_totals() -> None:
-    m = ScanTreeModel(top_n_bold=1)
+    m = ScanTreeModel(top_n_bold=1, show_files=False)  # synthetic tree: no live listing
     m.apply_many(make_events())
     root_it = m.store.get_iter_first()
     assert root_it is not None
@@ -94,7 +94,7 @@ def test_lazy_population_and_totals() -> None:
 
 
 def test_sort_reorders_and_keeps_population() -> None:
-    m = ScanTreeModel()
+    m = ScanTreeModel(show_files=False)
     m.apply_many(make_events())
     root_it = m.store.get_iter_first()
     assert root_it is not None
@@ -114,7 +114,7 @@ def test_sort_reorders_and_keeps_population() -> None:
 
 
 def test_running_totals_before_parent_done() -> None:
-    m = ScanTreeModel()
+    m = ScanTreeModel(show_files=False)
     events = make_events()
     m.apply_many(events[:8])  # up to Videos done; user and root not done yet
     user = m.nodes[2]
@@ -128,7 +128,7 @@ def test_running_totals_before_parent_done() -> None:
 
 
 def test_reveal_populates_ancestors() -> None:
-    m = ScanTreeModel()
+    m = ScanTreeModel(show_files=False)
     m.apply_many(make_events())
     it = m.reveal(m.nodes[4])
     assert it is not None
@@ -162,7 +162,7 @@ def big_stream(n_dirs: int) -> list[ScanEvent]:
 
 
 def test_controller_drains_within_budget() -> None:
-    m = ScanTreeModel()
+    m = ScanTreeModel(show_files=False)
     ctl = ScanController(m, budget_ms=8.0)
     seen = {"started": 0, "finished": None, "progress": 0, "batches": 0}
     ctl.connect("scan-started", lambda _c, _p: seen.__setitem__("started", seen["started"] + 1))
@@ -190,7 +190,7 @@ def test_controller_drains_within_budget() -> None:
 
 
 def test_controller_cancel_stops_producer() -> None:
-    m = ScanTreeModel()
+    m = ScanTreeModel(show_files=False)
     ctl = ScanController(m)
     done = {"v": None}
     ctl.connect("scan-finished", lambda _c, cancelled: done.__setitem__("v", cancelled))
@@ -232,3 +232,38 @@ def test_controller_real_scan(tmp_path) -> None:  # type: ignore[no-untyped-def]
     assert root_it is not None
     assert [r[0] for r in rows(m, root_it)] == ["alpha", "beta"]  # rows sorted by alloc desc
     assert m.display(root, "files") == "2"
+
+
+def test_file_rows_interleaved_with_folders(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """Expanding a folder lists its files live, sorted with the sub-folders, with share bars."""
+    root_dir = tmp_path / "files"
+    (root_dir / "sub").mkdir(parents=True)
+    (root_dir / "big.iso").write_bytes(b"x" * 300_000)
+    (root_dir / "mid.txt").write_bytes(b"y" * 120_000)
+    (root_dir / "sub" / "inner.bin").write_bytes(b"z" * 50_000)
+    (root_dir / ".hidden").write_bytes(b"h" * 10)
+    m = ScanTreeModel(file_row_limit=2)
+    ctl = ScanController(m)
+    done = {"v": None}
+    ctl.connect("scan-finished", lambda _c, cancelled: done.__setitem__("v", cancelled))
+    ctl.start(str(root_dir))
+    _pump(lambda: done["v"] is not None, timeout=30.0)
+    root_it = m.store.get_iter_first()
+    assert root_it is not None
+    # the root was populated during the scan; its files are listed when the scan ends
+    names = [r[0] for r in rows(m, root_it)]
+    assert names[0] == "big.iso"  # largest first, files interleaved with folders
+    assert "sub" in names and "mid.txt" in names
+    assert any(n.startswith("… ") and "more files" in n for n in names)  # limit=2 → summary row
+    # share bars for files
+    child = m.store.iter_children(root_it)
+    assert child is not None and m.is_file_row(child)
+    big = m.row_for_iter(child)
+    assert big is not None and 60.0 < m.percent(big) < 70.0  # 300k of ~470k
+    assert m.display(big, "type") == "Disk images"
+    assert m.display(big, "icon") == "text-x-generic-symbolic"
+    assert m.node_for_iter(child) is m.root  # file row resolves to its folder
+    # sorting by name puts folders and files in one alphabetical run
+    m.set_sort("name", False)
+    names = [r[0] for r in rows(m, root_it)]
+    assert names == sorted(names, key=str.casefold)

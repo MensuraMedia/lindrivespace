@@ -80,6 +80,67 @@ ICON_DENIED = "changes-prevent-symbolic"
 ICON_MOUNT = "drive-harddisk-symbolic"
 ICON_EXCLUDED = "action-unavailable-symbolic"
 ICON_PARTIAL = "dialog-warning-symbolic"
+ICON_FILE = "text-x-generic-symbolic"
+ICON_SYMLINK = "emblem-symbolic-link"
+ICON_MORE = "view-more-symbolic"
+
+
+class FileRow:
+    """A regular file (or the "… N more files" summary) shown under an expanded folder.
+
+    Duck-types the FsNode attributes the model reads (size, alloc, files, dirs,
+    mtime_max, parent, denied, children, percent_of_parent) so sorting, bold
+    ranking and display code need no special cases.
+    """
+
+    __slots__ = ("id", "name", "parent", "size", "alloc", "mtime", "flags", "more_count")
+    files = 0
+    dirs = 0
+    denied = False
+    finalized = True
+    children: list[FsNode] = []
+
+    def __init__(
+        self,
+        row_id: int,
+        name: str,
+        parent: FsNode,
+        size: int,
+        alloc: int,
+        mtime: float,
+        flags: int = 0,
+        more_count: int = 0,
+    ) -> None:
+        self.id = row_id
+        self.name = name
+        self.parent = parent
+        self.size = size
+        self.alloc = alloc
+        self.mtime = mtime
+        self.flags = flags
+        self.more_count = more_count  # > 0 on the summary row
+
+    @property
+    def mtime_max(self) -> float:
+        return self.mtime
+
+    @property
+    def is_summary(self) -> bool:
+        return self.more_count > 0
+
+    def path(self) -> str:
+        base = self.parent.path()
+        return base + ("" if base.endswith("/") else "/") + self.name
+
+    def percent_of_parent(self, allocated: bool = True) -> float:
+        total = self.parent.alloc if allocated else self.parent.size
+        own = self.alloc if allocated else self.size
+        if total <= 0:
+            return 0.0
+        return min(100.0, own * 100.0 / total)
+
+
+Row = FsNode | FileRow
 
 
 def _default_fmt_bytes(n: int) -> str:
@@ -156,8 +217,17 @@ class ScanTreeModel:
         fmt_bytes: Callable[[int], str] | None = None,
         allocated_primary: bool = True,
         top_n_bold: int = 3,
+        show_files: bool = True,
+        show_hidden: bool = True,
+        file_row_limit: int = 2000,
     ) -> None:
         self.store = Gtk.TreeStore(*COLUMN_TYPES)
+        self.show_files = show_files
+        self.show_hidden = show_hidden
+        self.file_row_limit = file_row_limit
+        self._files: dict[int, list[FileRow]] = {}  # populated parent id -> its file rows
+        self._file_rows: dict[int, FileRow] = {}  # file row id -> row
+        self._next_file_id = -2  # -1 is the dummy row
         self.fmt_bytes: Callable[[int], str] = fmt_bytes or _default_fmt_bytes
         self.allocated_primary = allocated_primary
         self.top_n_bold = top_n_bold
@@ -189,6 +259,9 @@ class ScanTreeModel:
         self._deferred_parents.clear()
         self._last_resort.clear()
         self._bold_cache.clear()
+        self._files.clear()
+        self._file_rows.clear()
+        self._next_file_id = -2
         self.entries = 0
         self.scanning = False
         self.errors.clear()
@@ -272,12 +345,18 @@ class ScanTreeModel:
         if node.parent is not None:
             self._dirty_parents.add(node.parent.id)
         self._dirty_parents.add(node.id)
+        if self.show_files and ev.files > 0 and node.id in self.iters:
+            self._ensure_dummy(node)
 
     # ------------------------------------------------------------------ flush
 
     def flush(self) -> None:
         """Re-sort children of parents touched since the last flush and bump ``version``."""
         now = time.monotonic()
+        if not self.scanning and self.root is not None:
+            for parent_id in list(self.populated):
+                if parent_id not in self._files:
+                    self._add_late_file_rows(parent_id)
         for parent_id in list(self._dirty_parents):
             self._bold_cache.pop(parent_id, None)
             if parent_id not in self.populated:
@@ -309,18 +388,96 @@ class ScanTreeModel:
             else:
                 child = self.store.iter_next(child)
         store = self.store
-        for c in reversed(self._sorted(node.children)):  # prepend keeps O(1) per row
-            cit = store.prepend(it, [c, c.name, False])
-            self.iters[c.id] = cit
-            if c.children:
-                store.prepend(cit, [None, "…", True])
+        files = self._load_files(node)
+        rows: list[Row] = [*node.children, *files]
+        for r in reversed(self._sorted(rows)):  # prepend keeps O(1) per row
+            rit = store.prepend(it, [r, r.name, False])
+            self.iters[r.id] = rit
+            if isinstance(r, FsNode) and self._needs_expander(r):
+                store.prepend(rit, [None, "…", True])
+        self._bold_cache.pop(node.id, None)
         self.version += 1
+
+    def _load_files(self, node: FsNode) -> list[FileRow]:
+        files = self.list_files(node) if self.show_files else []
+        self._files[node.id] = files
+        for f in files:
+            self._file_rows[f.id] = f
+        return files
+
+    def _add_late_file_rows(self, parent_id: int) -> None:
+        """Insert file rows under a folder that was populated during the scan
+        (its sub-folders arrived as events; its files were never listed)."""
+        parent = self.nodes.get(parent_id)
+        pit = self.iters.get(parent_id)
+        if parent is None or pit is None or parent_id in self._files:
+            return
+        files = self._load_files(parent)
+        for f in reversed(files):
+            self.iters[f.id] = self.store.prepend(pit, [f, f.name, False])
+        self._bold_cache.pop(parent_id, None)
+        self._dirty_parents.add(parent_id)
+
+    def list_files(self, node: FsNode) -> list[FileRow]:
+        """Files directly inside ``node`` — a live, single-directory listing.
+
+        The scanner keeps only a bounded ring of the largest files per folder,
+        so the exact list is read when the folder is expanded. Falls back to
+        the ring when the directory cannot be read. Capped at
+        ``file_row_limit`` largest files plus one "… N more files" summary row
+        carrying the remainder, so totals still add up.
+        """
+        import os
+
+        rows: list[FileRow] = []
+        try:
+            with os.scandir(node.path()) as it:
+                for entry in it:
+                    if not self.show_hidden and entry.name.startswith("."):
+                        continue
+                    try:
+                        st = entry.stat(follow_symlinks=False)
+                    except OSError:
+                        continue
+                    if entry.is_dir(follow_symlinks=False):
+                        continue
+                    flags = fs.SYMLINK if entry.is_symlink() else 0
+                    rows.append(
+                        FileRow(
+                            0, entry.name, node, st.st_size, st.st_blocks * 512, st.st_mtime, flags
+                        )
+                    )
+        except OSError:
+            rows = [FileRow(0, t.name, node, t.size, t.alloc, t.mtime) for t in node.top_files]
+        rows.sort(key=lambda r: r.alloc, reverse=True)
+        if len(rows) > self.file_row_limit:
+            rest = rows[self.file_row_limit :]
+            rows = rows[: self.file_row_limit]
+            rows.append(
+                FileRow(
+                    0,
+                    f"… {len(rest):,} more files",
+                    node,
+                    sum(r.size for r in rest),
+                    sum(r.alloc for r in rest),
+                    max((r.mtime for r in rest), default=0.0),
+                    more_count=len(rest),
+                )
+            )
+        for r in rows:
+            r.id = self._next_file_id
+            self._next_file_id -= 1
+        return rows
 
     def _ensure_dummy(self, parent: FsNode) -> None:
         pit = self.iters.get(parent.id)
-        if pit is None or self.store.iter_has_child(pit):
+        if pit is None or parent.id in self.populated or self.store.iter_has_child(pit):
             return
         self.store.append(pit, [None, "…", True])
+
+    def _needs_expander(self, node: FsNode) -> bool:
+        """A row can be expanded when it has sub-folders or (shown) files."""
+        return bool(node.children) or (self.show_files and node.files > 0)
 
     # ----------------------------------------------------------------- sorting
 
@@ -339,7 +496,7 @@ class ScanTreeModel:
             self._resort_children(parent_id, force=True)
         self.version += 1
 
-    def _sort_key(self) -> Callable[[FsNode], object]:
+    def _sort_key(self) -> Callable[[Row], object]:
         col = self.sort_column
         if col == "name":
             return lambda n: n.name.casefold()
@@ -353,8 +510,16 @@ class ScanTreeModel:
             return lambda n: n.dirs
         return lambda n: n.mtime_max  # modified
 
-    def _sorted(self, children: list[FsNode]) -> list[FsNode]:
-        return sorted(children, key=self._sort_key(), reverse=self.sort_descending)
+    def _sorted(self, rows: list[Row]) -> list[Row]:
+        return sorted(rows, key=self._sort_key(), reverse=self.sort_descending)
+
+    def _rows_of(self, parent: FsNode) -> list[Row]:
+        return [*parent.children, *self._files.get(parent.id, [])]
+
+    def _obj(self, row_id: int) -> Row | None:
+        if row_id >= 0:
+            return self.nodes.get(row_id)
+        return self._file_rows.get(row_id)
 
     def _resort_children(self, parent_id: int, force: bool = False) -> None:
         parent = self.nodes.get(parent_id)
@@ -376,7 +541,7 @@ class ScanTreeModel:
             return
         current_ids = [cid for cid, _ in current]
         present = set(current_ids)
-        wanted = [c.id for c in self._sorted(parent.children) if c.id in present]
+        wanted = [r.id for r in self._sorted(self._rows_of(parent)) if r.id in present]
         wanted += [cid for cid in current_ids if cid == -1]  # dummy rows stay last
         if wanted == current_ids:
             return
@@ -408,43 +573,46 @@ class ScanTreeModel:
         while child is not None:
             node = store.get_value(child, Col.NODE)
             if node is not None:
-                self.iters.pop(node.id, None)
+                self.iters.pop(node.id, None)  # FsNode or FileRow — both carry .id
             nxt = store.iter_next(child)
             store.remove(child)
             child = nxt
         for cid in reversed(wanted):
             if cid == -1:
                 continue
-            node = self.nodes[cid]
-            it = store.prepend(pit, [node, node.name, False])
+            row = self._obj(cid)
+            if row is None:
+                continue
+            it = store.prepend(pit, [row, row.name, False])
             self.iters[cid] = it
-            if node.children:
+            if isinstance(row, FsNode) and self._needs_expander(row):
                 store.prepend(it, [None, "…", True])
 
     # ---------------------------------------------------------------- display
 
-    def primary(self, node: FsNode) -> int:
+    def primary(self, node: Row) -> int:
         return node.alloc if self.allocated_primary else node.size
 
-    def percent(self, node: FsNode) -> float:
+    def percent(self, node: Row) -> float:
         return node.percent_of_parent(self.allocated_primary)
 
-    def is_bold(self, node: FsNode) -> bool:
+    def is_bold(self, node: Row) -> bool:
         parent = node.parent
         if parent is None:
             return True
         bold = self._bold_cache.get(parent.id)
         if bold is None:
-            ranked = sorted(parent.children, key=self.primary, reverse=True)
+            ranked = sorted(self._rows_of(parent), key=self.primary, reverse=True)
             bold = frozenset(c.id for c in ranked[: self.top_n_bold] if self.primary(c) > 0)
             self._bold_cache[parent.id] = bold
         return node.id in bold
 
-    def weight(self, node: FsNode) -> int:
+    def weight(self, node: Row) -> int:
         return WEIGHT_MEDIUM if self.is_bold(node) else WEIGHT_NORMAL
 
-    def display(self, node: FsNode, kind: str) -> str:
-        """Formatted text for a column kind."""
+    def display(self, node: Row, kind: str) -> str:
+        """Formatted text for a column kind (folders and file rows alike)."""
+        is_file = isinstance(node, FileRow)
         if kind == "name":
             return node.name
         if kind == "name_size":
@@ -454,16 +622,30 @@ class ScanTreeModel:
         if kind == "alloc":
             return self.fmt_bytes(node.alloc)
         if kind == "files":
+            if is_file:
+                return _fmt_count(node.more_count) if node.is_summary else ""
             return "—" if node.denied else _fmt_count(node.files)
         if kind == "dirs":
+            if is_file:
+                return ""
             return "—" if node.denied else _fmt_count(node.dirs)
         if kind == "percent":
             return f"{self.percent(node):.1f} %"
         if kind == "modified":
             return _fmt_date(node.mtime_max)
         if kind == "icon":
+            if is_file:
+                if node.is_summary:
+                    return ICON_MORE
+                return ICON_SYMLINK if node.flags & fs.SYMLINK else ICON_FILE
             return icon_for(node)
-        if kind in ("owner", "type"):
+        if kind == "type":
+            if is_file and not node.is_summary:
+                from lindrivespace.core.classify import class_label, classify
+
+                return class_label(classify(node.name))
+            return ""
+        if kind == "owner":
             return ""
         raise ValueError(f"unknown display kind: {kind}")
 
@@ -500,7 +682,7 @@ class ScanTreeModel:
                     cell.set_property("text", "…" if kind == "name" else "")
                 return
             if kind == "icon":
-                cell.set_property("icon-name", icon_for(node))
+                cell.set_property("icon-name", self.display(node, "icon"))
                 return
             if kind == "percent" and has_percent:
                 cell.set_property("percent", self.percent(node))
@@ -515,8 +697,19 @@ class ScanTreeModel:
     # -------------------------------------------------------------- lookups
 
     def node_for_iter(self, it: Gtk.TreeIter) -> FsNode | None:
+        """The folder at ``it``; for a file row, its parent folder."""
         value = self.store.get_value(it, Col.NODE)
+        if isinstance(value, FileRow):
+            return value.parent
         return value if isinstance(value, FsNode) else None
+
+    def row_for_iter(self, it: Gtk.TreeIter) -> Row | None:
+        """The folder or file row at ``it`` (None on the dummy row)."""
+        value = self.store.get_value(it, Col.NODE)
+        return value if isinstance(value, FsNode | FileRow) else None
+
+    def is_file_row(self, it: Gtk.TreeIter) -> bool:
+        return isinstance(self.store.get_value(it, Col.NODE), FileRow)
 
     def node_for_path(self, path: Gtk.TreePath) -> FsNode | None:
         return self.node_for_iter(self.store.get_iter(path))

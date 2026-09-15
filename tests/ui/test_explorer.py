@@ -182,13 +182,41 @@ def test_context_menu_sensitivity() -> None:
 
     menu_normal = TreeContextMenu(normal, has_side_panel=False)
     items = menu_normal.get_children()
-    # 3 items, separator, 2 items, separator, admin, treemap
-    admin_item = items[7]
+    # favorite, separator, 3 items, separator, 2 items, separator, admin, treemap, sep, columns
+    admin_item = items[9]
     assert admin_item.get_label() == "Scan as administrator"
     assert admin_item.get_sensitive() is False
-    assert items[8].get_sensitive() is False  # show in treemap, no side panel
+    assert items[10].get_sensitive() is False  # show in treemap, no side panel
 
     menu_denied = TreeContextMenu(denied, has_side_panel=True)
     items2 = menu_denied.get_children()
     assert items2[7].get_sensitive() is True
     assert items2[8].get_sensitive() is True  # show in treemap, has_side_panel=True
+
+
+def test_favorites_star_and_reveal(window, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """Ctrl+D / toolbar star / context menu toggle the favourite; file favourites reveal."""
+    page = window.pages["explorer"]
+    root = tmp_path / "favroot"
+    (root / "sub").mkdir(parents=True)
+    (root / "sub" / "keep.bin").write_bytes(b"k" * 5000)
+    page.start_scan(str(root))
+    _pump(lambda: not page.controller.running)
+    page.tree.select_node(page.model.root)
+    assert page.selected_path() == str(root)
+    assert page.toggle_favorite() is True
+    assert page.favorites.is_favorite(str(root))
+    assert page.toolbar.favorite_button.get_active() is True
+    assert page.toggle_favorite() is False
+    assert page.toolbar.favorite_button.get_active() is False
+    # reveal a file favourite: folder expanded, file row selected
+    assert page.reveal_path(str(root / "sub" / "keep.bin")) is True
+    row = page.tree.get_selected_row()
+    assert row is not None and row.name == "keep.bin"
+    # pending reveal is honoured after a scan
+    window.pending_reveal = str(root / "sub")
+    page.start_scan(str(root))
+    _pump(lambda: not page.controller.running)
+    node = page.tree.get_selected_node()
+    assert node is not None and node.name == "sub"
+    assert window.pending_reveal is None

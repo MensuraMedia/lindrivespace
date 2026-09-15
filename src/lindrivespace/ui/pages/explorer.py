@@ -24,10 +24,12 @@ from lindrivespace.core import units  # noqa: E402
 from lindrivespace.core.fsnode import FsNode  # noqa: E402
 from lindrivespace.core.options import DEFAULT_EXCLUDES, ScanOptions  # noqa: E402
 from lindrivespace.models.tree_model import ScanTreeModel  # noqa: E402
+from lindrivespace.services.favorites import get_store  # noqa: E402
 from lindrivespace.services.scan_controller import ScanController  # noqa: E402
 from lindrivespace.ui.pages.base import BasePage  # noqa: E402
 from lindrivespace.ui.widgets.breadcrumb import Breadcrumb  # noqa: E402
 from lindrivespace.ui.widgets.explorer_tree import ExplorerTree  # noqa: E402
+from lindrivespace.ui.widgets.insight_panel import InsightPanel  # noqa: E402
 from lindrivespace.ui.widgets.scan_toolbar import ScanToolbar  # noqa: E402
 from lindrivespace.ui.widgets.tree_context_menu import TreeContextMenu  # noqa: E402
 
@@ -57,6 +59,7 @@ class ExplorerPage(BasePage):
         self._pill_progress: Gtk.ProgressBar | None = None
         self._error_count = 0
         self._has_side_panel = False
+        self._selected_file: object | None = None
 
         self.model = ScanTreeModel(
             fmt_bytes=self._format_bytes,
@@ -77,6 +80,13 @@ class ExplorerPage(BasePage):
         self.toolbar.connect("primary-changed", self._on_primary_changed)
         self.toolbar.connect("hidden-changed", self._on_hidden_changed)
         self.toolbar.connect("cross-mounts-changed", self._on_cross_mounts_changed)
+        self.toolbar.connect("panel-toggled", lambda _t, active: self.set_panel_visible(active))
+        self.toolbar.connect(
+            "columns-requested", lambda t: self.tree.show_column_menu(t.columns_button)
+        )
+        self.toolbar.connect("favorite-toggled", lambda _t, _a: self.toggle_favorite())
+        self.favorites = get_store(self.app)
+        self.favorites.connect("changed", lambda _s: self._sync_favorite_button())
         self.pack_start(self.toolbar, False, False, 0)
 
         self.breadcrumb = Breadcrumb(self.theme)
@@ -90,16 +100,33 @@ class ExplorerPage(BasePage):
         self.tree = ExplorerTree(self.theme, self.model, self.settings)
         self.tree.set_hexpand(True)
         self.tree.set_vexpand(True)
+        # A minimum width keeps GtkPaned from clamping the divider to 0 on its
+        # first (tiny) allocation and collapsing the tree behind the panel.
+        self.tree.set_size_request(420, -1)
         self.tree.connect("node-selected", self._on_node_selected)
+        self.tree.connect("file-selected", self._on_file_selected)
+        self.tree.connect("file-activated", self._on_file_activated)
         self.tree.connect("context-requested", self._on_context_requested)
-        self.paned.pack1(self.tree, True, True)
+        self.paned.pack1(self.tree, True, False)
 
         self._panel_slot = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self._panel_slot.set_no_show_all(True)
         self._panel_slot.set_visible(False)
-        self.paned.pack2(self._panel_slot, False, True)
+        self.paned.pack2(self._panel_slot, False, False)
 
         self.pack_start(self.paned, True, True, 0)
+
+        # ---- insight panel (WP9) ---------------------------------------------
+        self._auto_hidden = False
+        self.panel = InsightPanel(self.theme, self.settings)
+        self.panel.connect("node-activated", lambda _p, node: self.tree.select_node(node))
+        self.panel.connect("collapse-requested", lambda _p: self.set_panel_visible(False))
+        self.connect("node-selected", lambda _page, node: self.panel.set_node(node, self.model))
+        if self.settings.get("window.panel_visible", True):
+            self.add_side_panel(self.panel, persist=False)
+        self.toolbar.set_panel_active(self._has_side_panel)
+        self.connect("size-allocate", self._on_page_size_allocate)
+        self.window.connect("key-press-event", self._on_key_press)
 
         self.status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         self.status_bar.get_style_context().add_class("statusbar")
@@ -247,6 +274,10 @@ class ExplorerPage(BasePage):
         self.tree.refresh()
         if self.model.root is not None:
             self.tree.select_node(self.model.root)
+        pending = getattr(self.window, "pending_reveal", None)
+        if pending:
+            self.window.pending_reveal = None
+            self.reveal_path(str(pending))
         self._update_status(extra=f"{state} in {elapsed:.1f} s")
 
     def _on_scan_error(self, _controller: ScanController, _path: str, _message: str) -> None:
@@ -258,7 +289,86 @@ class ExplorerPage(BasePage):
     def _on_node_selected(self, _tree: ExplorerTree, node: FsNode | None) -> None:
         self.breadcrumb.set_node(node, self.model)
         self._update_status()
+        self._sync_favorite_button()
         self.emit("node-selected", node)
+
+    # ---- favorites -----------------------------------------------------------
+
+    def selected_path(self) -> str | None:
+        """Path of the selected row (file or folder), or None."""
+        row = self.tree.get_selected_row()
+        if row is None:
+            return None
+        return row.path()  # type: ignore[attr-defined, no-any-return]
+
+    def _sync_favorite_button(self) -> None:
+        path = self.selected_path()
+        self.toolbar.set_favorite_active(bool(path) and self.favorites.is_favorite(path or ""))
+
+    def toggle_favorite(self, path: str | None = None) -> bool | None:
+        """Star/unstar ``path`` (default: the selection). Returns the new state."""
+        path = path or self.selected_path()
+        if not path:
+            return None
+        state = self.favorites.toggle(path)
+        self._sync_favorite_button()
+        self.status_left.set_text(
+            f"Added to Favorites: {path}" if state else f"Removed from Favorites: {path}"
+        )
+        return state
+
+    def reveal_path(self, path: str) -> bool:
+        """Select the row for ``path`` (a folder or file under the scan root)."""
+        root = self.model.root
+        if root is None:
+            return False
+        root_path = root.path()
+        if path == root_path:
+            self.tree.select_node(root)
+            return True
+        prefix = root_path if root_path.endswith("/") else root_path + "/"
+        if not path.startswith(prefix):
+            return False
+        node: FsNode | None = root
+        parts = path[len(prefix) :].split("/")
+        for i, part in enumerate(parts):
+            assert node is not None
+            child = next((c for c in node.children if c.name == part), None)
+            if child is None:
+                if i == len(parts) - 1:  # a file: select its folder, expand, pick the row
+                    self.tree.select_node(node)
+                    it = self.model.iter_for_node(node)
+                    if it is not None:
+                        self.tree.treeview.expand_row(self.model.store.get_path(it), False)
+                        child_it = self.model.store.iter_children(it)
+                        while child_it is not None:
+                            row = self.model.row_for_iter(child_it)
+                            if row is not None and row.name == part:
+                                self.tree.selection.select_iter(child_it)
+                                self.tree.treeview.scroll_to_cell(
+                                    self.model.store.get_path(child_it), None, True, 0.3, 0.0
+                                )
+                                return True
+                            child_it = self.model.store.iter_next(child_it)
+                    return True
+                return False
+            node = child
+        self.tree.select_node(node)  # type: ignore[arg-type]
+        return True
+
+    def _on_file_selected(self, _tree: ExplorerTree, row: object | None) -> None:
+        """A file row is selected: show it in the status bar (folder totals stay in the panel)."""
+        self._selected_file = row
+        if row is not None:
+            size = self.model.fmt_bytes(self.model.primary(row))  # type: ignore[arg-type]
+            self.status_right.set_text(f"file: {row.path()} {size}")  # type: ignore[attr-defined]
+
+    def _on_file_activated(self, _tree: ExplorerTree, path: str) -> None:
+        """Double-click on a file: reveal it in the file manager."""
+        from lindrivespace.services import actions
+
+        if not actions.reveal_in_file_manager(path):
+            self.status_left.set_text(f"Could not open a file manager for {path}")
 
     def _update_status(self, extra: str | None = None) -> None:
         entries = self.controller.entries or self.model.entries
@@ -289,7 +399,12 @@ class ExplorerPage(BasePage):
         _y: int,
         event: Gdk.EventButton,
     ) -> None:
-        menu = TreeContextMenu(node, has_side_panel=self.has_side_panel)
+        path = self.selected_path()
+        menu = TreeContextMenu(
+            node,
+            has_side_panel=self.has_side_panel,
+            is_favorite=bool(path) and self.favorites.is_favorite(path or ""),
+        )
         menu.connect("action", self._on_menu_action)
         menu.popup_at_pointer(event)
 
@@ -314,7 +429,15 @@ class ExplorerPage(BasePage):
                 excludes.append(path)
                 self.settings.set("scan.excludes", excludes)
             print(f"excluded from scan: {path}")
-        elif name in ("scan-as-admin", "show-in-treemap"):
+        elif name == "toggle-favorite":
+            self.toggle_favorite(self.selected_path() or path)
+        elif name == "columns":
+            self.tree.show_column_menu()
+        elif name == "show-in-treemap" and node is not None:
+            self.set_panel_visible(True)
+            self.panel.current_tab = "treemap"
+            self.panel.set_node(node, self.model)
+        elif name == "scan-as-admin":
             print(f"TODO (WP11/WP9): {name} for {path}")
             self.emit("action-requested", name, node)
 
@@ -336,23 +459,80 @@ class ExplorerPage(BasePage):
     def has_side_panel(self) -> bool:
         return self._has_side_panel
 
-    def add_side_panel(self, widget: Gtk.Widget) -> None:
+    def add_side_panel(self, widget: Gtk.Widget, *, persist: bool = True) -> None:
         for child in list(self._panel_slot.get_children()):
             self._panel_slot.remove(child)
         self._panel_slot.pack_start(widget, True, True, 0)
         self._panel_slot.set_visible(True)
-        widget.show()
+        # ``_panel_slot`` is ``no_show_all`` (kept hidden until a panel is
+        # attached), so the ambient ``win.show_all()`` cascade never reaches
+        # its subtree: the attached widget must be shown explicitly, and
+        # ``show_all`` (not just ``show``) so its own children map too.
+        widget.show_all()
         self._has_side_panel = True
-        width = self.get_allocated_width() or int(self.settings.get("window.width", 1200))
-        self.paned.set_position(max(0, width - _DIMS.PANEL_WIDTH))
-        self.settings.set("window.panel_visible", True)
+        # The panel keeps its PANEL_WIDTH size request and pack2(resize=False):
+        # GtkPaned then gives the tree everything else, no set_position needed.
+        if persist:
+            self._save_panel_visible(True)
 
-    def remove_side_panel(self) -> None:
+    def remove_side_panel(self, *, persist: bool = True) -> None:
         for child in list(self._panel_slot.get_children()):
             self._panel_slot.remove(child)
         self._panel_slot.set_visible(False)
         self._has_side_panel = False
-        self.settings.set("window.panel_visible", False)
+        if persist:
+            self._save_panel_visible(False)
+
+    def _save_panel_visible(self, visible: bool) -> None:
+        self.settings.set("window.panel_visible", visible)
+        try:
+            self.settings.save()
+        except OSError as exc:
+            print(f"could not save settings: {exc}")
+
+    def set_panel_visible(self, visible: bool) -> None:
+        """Show/hide the insight panel and persist the choice (user action)."""
+        if visible == self._has_side_panel:
+            self.toolbar.set_panel_active(visible)
+            return
+        if visible:
+            self.add_side_panel(self.panel)
+        else:
+            self.remove_side_panel()
+        self.toolbar.set_panel_active(visible)
+
+    def toggle_panel(self) -> None:
+        self.set_panel_visible(not self._has_side_panel)
+
+    def _on_key_press(self, _widget: Gtk.Widget, event: Gdk.EventKey) -> bool:
+        if self.window.current_page_id != self.page_id:
+            return False
+        if event.keyval == Gdk.KEY_F9:
+            self.toggle_panel()
+            return True
+        ctrl = bool(event.state & Gdk.ModifierType.CONTROL_MASK)
+        if ctrl and event.keyval in (Gdk.KEY_d, Gdk.KEY_D):
+            self.toggle_favorite()
+            return True
+        return False
+
+    def _on_page_size_allocate(self, _widget: Gtk.Widget, _allocation: Gdk.Rectangle) -> None:
+        # Compare the *window's* width, not this page's content-box width: the
+        # page is already narrower than the window by the sidebar's fixed 150 px,
+        # so using the page's own allocation would auto-collapse the panel at
+        # the default 1200 px window size (1200 - 150 = 1050 < 1100).
+        width = self.window.get_allocated_width()
+        if width <= 0:
+            return
+        below_threshold = width < _DIMS.PANEL_COLLAPSE_BELOW
+        if below_threshold and self._has_side_panel:
+            self._auto_hidden = True
+            self.remove_side_panel(persist=False)
+            self.toolbar.set_panel_active(False)
+        elif not below_threshold and self._auto_hidden and not self._has_side_panel:
+            self._auto_hidden = False
+            self.add_side_panel(self.panel, persist=False)
+            self.toolbar.set_panel_active(True)
 
     # ---- page lifecycle -----------------------------------------------------
 

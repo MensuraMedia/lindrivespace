@@ -25,10 +25,20 @@ class TreeContextMenu(Gtk.Menu):
         "action": (GObject.SignalFlags.RUN_FIRST, None, (str, object)),
     }
 
-    def __init__(self, node: FsNode | None = None, has_side_panel: bool = False) -> None:
+    def __init__(
+        self,
+        node: FsNode | None = None,
+        has_side_panel: bool = False,
+        is_favorite: bool = False,
+    ) -> None:
         super().__init__()
         self._node = node
 
+        self._add_item(
+            "Remove from favorites" if is_favorite else "Add to favorites  (Ctrl+D)",
+            "toggle-favorite",
+        )
+        self.append(Gtk.SeparatorMenuItem())
         self._add_item("Open in file manager", "open-file-manager")
         self._add_item("Open terminal here", "open-terminal")
         self._add_item("Copy path", "copy-path")
@@ -42,6 +52,8 @@ class TreeContextMenu(Gtk.Menu):
 
         treemap_item = self._add_item("Show in treemap", "show-in-treemap")
         treemap_item.set_sensitive(bool(has_side_panel))
+        self.append(Gtk.SeparatorMenuItem())
+        self._add_item("Columns…", "columns")
 
         self.show_all()
 

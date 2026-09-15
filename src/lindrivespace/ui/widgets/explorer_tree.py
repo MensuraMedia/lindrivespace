@@ -20,7 +20,7 @@ from gi.repository import Gdk, GLib, GObject, Gtk, Pango  # noqa: E402
 
 from lindrivespace.config.settings import Settings  # noqa: E402
 from lindrivespace.config.theme import ThemeDefinition  # noqa: E402
-from lindrivespace.models.tree_model import SORT_COLUMNS, ScanTreeModel  # noqa: E402
+from lindrivespace.models.tree_model import SORT_COLUMNS, FileRow, ScanTreeModel  # noqa: E402
 from lindrivespace.ui.widgets.percent_bar_renderer import PercentBarRenderer  # noqa: E402
 
 if TYPE_CHECKING:
@@ -52,6 +52,8 @@ class ExplorerTree(Gtk.ScrolledWindow):
     __gtype_name__ = "LdsExplorerTree"
     __gsignals__ = {
         "node-selected": (GObject.SignalFlags.RUN_FIRST, None, (object,)),
+        "file-selected": (GObject.SignalFlags.RUN_FIRST, None, (object,)),  # FileRow or None
+        "file-activated": (GObject.SignalFlags.RUN_FIRST, None, (str,)),  # path
         "context-requested": (GObject.SignalFlags.RUN_FIRST, None, (object, int, int, object)),
     }
 
@@ -211,6 +213,15 @@ class ExplorerTree(Gtk.ScrolledWindow):
         menu.popup_at_pointer(event)
         return True
 
+    def show_column_menu(self, anchor: Gtk.Widget | None = None) -> None:
+        """Open the column visibility menu (toolbar button / row context menu)."""
+        menu = self._build_column_menu()
+        self._column_menu = menu  # keep a reference while it is open
+        if anchor is not None:
+            menu.popup_at_widget(anchor, Gdk.Gravity.SOUTH_WEST, Gdk.Gravity.NORTH_WEST, None)
+        else:
+            menu.popup_at_pointer(None)
+
     def _build_column_menu(self) -> Gtk.Menu:
         menu = Gtk.Menu()
         for cid, title, _kind, _xalign, _width, hideable in COLUMN_DEFS:
@@ -365,6 +376,12 @@ class ExplorerTree(Gtk.ScrolledWindow):
     def _on_row_activated(
         self, treeview: Gtk.TreeView, path: Gtk.TreePath, _column: Gtk.TreeViewColumn
     ) -> None:
+        it = self.model.store.get_iter(path)
+        if self.model.is_file_row(it):
+            row = self.model.row_for_iter(it)
+            if row is not None and not getattr(row, "is_summary", False):
+                self.emit("file-activated", row.path())
+            return
         if treeview.row_expanded(path):
             treeview.collapse_row(path)
         else:
@@ -381,7 +398,18 @@ class ExplorerTree(Gtk.ScrolledWindow):
             return None
         return self.model.node_for_iter(it)
 
+    def get_selected_row(self) -> object | None:
+        """The selected folder or file row (FsNode | FileRow | None)."""
+        selection = self.treeview.get_selection()
+        model, it = selection.get_selected()
+        if it is None:
+            return None
+        return self.model.row_for_iter(it)
+
     def _on_selection_changed(self, _selection: Gtk.TreeSelection) -> None:
+        row = self.get_selected_row()
+        is_file = isinstance(row, FileRow)
+        self.emit("file-selected", row if is_file else None)
         self.emit("node-selected", self.get_selected_node())
 
     def select_node(self, node: FsNode) -> None:
