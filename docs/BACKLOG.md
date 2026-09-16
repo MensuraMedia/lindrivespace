@@ -95,3 +95,18 @@ folder with a half bar. Review verdict: arithmetic exact, semantics wrong. Imple
 | F6 | Hidden toggle did not update the model's file listing until a rescan. | **[fixed]** |
 | F7 | Summary row shows the "N more files" count in the Files column (others show recursive counts). | Open, cosmetic. |
 | F8 | "Focus here" to renormalise Share % to a sub-folder, like the treemap. | Open, enhancement. |
+
+## G. Distribution — Flathub (2026-09-16 assessment)
+
+Metadata is close; the sandbox is the work. Gaps, cheapest first:
+
+| # | Item | Effort |
+|---|---|---|
+| G1 | Metainfo `project_license` → the real SPDX id `PolyForm-Noncommercial-1.0.0` (Flathub accepts redistributable non-free apps). | XS |
+| G2 | App ID verification: keep `com.mensuramedia.lindrivespace` only if mensuramedia.com can host Flathub's verification file; otherwise rename everything to `io.github.MensuraMedia.lindrivespace` (desktop, metainfo, icons, polkit). | S |
+| G3 | Flathub manifest repo: GNOME runtime (GTK 3), source pinned to a tag, modules for psutil + pyudev, bundle the Ubuntu fonts. | S |
+| G4 | Root mapping: inside the sandbox `/` is the runtime; the host root is `/run/host`. Mount list + scanner need a path layer so `/` scans `/run/host` and displays as `/` (`--filesystem=host`, host-os, host-etc). | M |
+| G5 | Fallbacks without udev/lsblk in the sandbox: poll `/proc/self/mountinfo` for hot-plug; read disk details from `/sys` only. | S |
+| G6 | Scheduler inside Flatpak: unit runs `flatpak run --command=lindrivespace <id> --collect`; enabling needs D-Bus to the user's systemd (or a host spawn) — declare and justify in the manifest. | S |
+| G7 | "Scan as administrator" (pkexec) is impossible in the sandbox: hide it in the Flatpak build. | XS |
+| G8 | Submission: flathub-builder test build, reviewer questions on host filesystem access (a disk-usage app has a clear justification). | S |

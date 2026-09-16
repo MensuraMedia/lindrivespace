@@ -109,6 +109,8 @@ def _format_uptime(seconds: float) -> str:
 
 def _copyable(group: PrefGroup) -> PrefGroup:
     group.enable_copy()
+    # Hardware cards read as headings: a step below the page title (see .section-title.large).
+    group.title_widget.get_style_context().add_class("large")
     return group
 
 

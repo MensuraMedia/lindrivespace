@@ -119,6 +119,14 @@ headerbar.lds-header button:checked {
   letter-spacing: 1px;
   margin-top: 6px;
 }
+/* Card titles that read as headings (Hardware): a step below the 14 pt page title. */
+.section-title.large {
+  color: @fg;
+  font-size: 12pt;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
 .paragraph {
   color: @fg_muted;
 }
