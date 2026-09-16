@@ -180,8 +180,8 @@ command, the menu entry (System › LinDriveSpace), icons, AppStream metadata an
 
 ```bash
 git clone https://github.com/MensuraMedia/lindrivespace.git && cd lindrivespace
-scripts/build-deb.sh                       # → dist/lindrivespace_0.1.0_all.deb
-sudo apt install ./dist/lindrivespace_0.1.0_all.deb
+scripts/build-deb.sh                       # → dist/lindrivespace_0.2.0_all.deb
+sudo apt install ./dist/lindrivespace_0.2.0_all.deb
 ```
 
 **Installer script** (no packaging tools; dependencies must be present):

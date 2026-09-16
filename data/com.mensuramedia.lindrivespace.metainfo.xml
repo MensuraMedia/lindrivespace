@@ -23,6 +23,7 @@
     <screenshot><caption>History with folder and file changes</caption><image>https://raw.githubusercontent.com/MensuraMedia/lindrivespace/main/docs/screenshots/history.png</image></screenshot>
   </screenshots>
   <releases>
+    <release version="0.2.0" date="2026-09-16"><description><p>Share % now shows each row's share of the whole scan (Of parent % optional); hard links counted once; History change drill-down; scheduled background collection; performance fixes; PolyForm Noncommercial licence; installer, .deb and menu entry.</p></description></release>
     <release version="0.1.0" date="2026-09-15"><description><p>First packaged release.</p></description></release>
   </releases>
 </component>
