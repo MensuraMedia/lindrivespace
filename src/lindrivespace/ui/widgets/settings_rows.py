@@ -83,6 +83,7 @@ class PrefGroup(Gtk.Box):
         title_label = Gtk.Label(label=title)
         title_label.set_xalign(0.0)
         title_label.get_style_context().add_class("section-title")
+        title_label.get_style_context().add_class("large")  # card titles read as headings
         header.pack_start(title_label, True, True, 0)
         self.copy_button: Gtk.Button | None = None
         self._header = header

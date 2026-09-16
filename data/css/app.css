@@ -119,7 +119,11 @@ headerbar.lds-header button:checked {
   letter-spacing: 1px;
   margin-top: 6px;
 }
-/* Card titles that read as headings (Hardware): a step below the 14 pt page title. */
+/* KPI tile labels: small caps stat labels, sized to stay legible. */
+.section-title.kpi-label {
+  font-size: 9.5pt;
+}
+/* Card titles read as headings (every PrefGroup card): a step below the 14 pt page title. */
 .section-title.large {
   color: @fg;
   font-size: 12pt;

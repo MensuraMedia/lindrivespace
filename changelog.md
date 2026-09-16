@@ -76,3 +76,4 @@
 | 2026-09-16T04:00:00 | Version 0.2.0 (user: packages updated): __init__, pyproject, AppStream release entry, README; .deb rebuilt (dist/lindrivespace_0.2.0_all.deb, launches from its extracted tree), user install refreshed; tag v0.2.0. |
 | 2026-09-16T04:30:00 | README (user): Analysis/treemap screenshot replaced with the user's capture of /home/user with the panel open (new Share % bars, treemap). |
 | 2026-09-16T05:10:00 | Hardware (user): card titles enlarged to 12 pt (.section-title.large, a step below the 14 pt page title); screenshot re-taken. Backlog §G: Flathub compliance assessment (SPDX id, app-id verification, manifest, /run/host root mapping, udev/lsblk fallbacks, scheduler, pkexec). |
+| 2026-09-16T05:40:00 | Card titles app-wide (user): every PrefGroup card title (Settings, History, Hardware) is now the 12 pt heading style; KPI tile labels raised to 9.5 pt small caps. Overview/History/Hardware/Settings screenshots re-taken. |

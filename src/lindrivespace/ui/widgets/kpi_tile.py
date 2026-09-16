@@ -38,6 +38,7 @@ class KpiTile(Gtk.Box):
         self.label_widget = Gtk.Label(label=label.upper())
         self.label_widget.set_xalign(0.0)
         self.label_widget.get_style_context().add_class("section-title")
+        self.label_widget.get_style_context().add_class("kpi-label")
         self.pack_start(self.label_widget, False, False, 0)
 
         value_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
